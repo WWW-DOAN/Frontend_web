@@ -30,6 +30,7 @@ export interface CallState {
   isSpeaking: boolean;
   audioMuted: boolean;
   videoMuted: boolean;
+  isScreenSharing: boolean;
   callStartTime: number | null;
   // Loading states
   isStarting: boolean;
@@ -69,6 +70,7 @@ export interface CallSetters {
   setSpeaking: (speaking: boolean) => void;
   setAudioMuted: (muted: boolean) => void;
   setVideoMuted: (muted: boolean) => void;
+  setScreenSharing: (value: boolean) => void;
   setEnded: () => void;
   setReconnecting: () => void;
   setCallStartTime: (time: number) => void;
@@ -103,6 +105,7 @@ export const initialCallState: CallState = {
   isSpeaking: false,
   audioMuted: false,
   videoMuted: false,
+  isScreenSharing: false,
   callStartTime: null,
   isStarting: false,
   isEnding: false,
@@ -196,6 +199,8 @@ export const useCallStore = create<CallStore>((set) => ({
   setAudioMuted: (muted) => set({ audioMuted: muted }),
 
   setVideoMuted: (muted) => set({ videoMuted: muted }),
+
+  setScreenSharing: (value) => set({ isScreenSharing: value }),
 
   setEnded: () =>
     set({

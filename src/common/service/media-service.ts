@@ -10,7 +10,7 @@ const getAccessTokenFromLocal = (): string | null => {
 
 function getCloudinaryResourceType(mimeType: string): 'image' | 'video' | 'raw' {
   if (mimeType.startsWith("image/")) return "image";
-  if (mimeType.startsWith("video/")) return "video";
+  if (mimeType.startsWith("video/") || mimeType.startsWith("audio/")) return "video";
   return "raw";
 }
 
@@ -33,78 +33,94 @@ export async function uploadMedia({
   const resourceType = getCloudinaryResourceType(file.type);
   const needsAttachmentTransform = resourceType === "raw";
 
-  // 1) Lấy signature từ backend
-  const signRes = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4321"}/api/media/cloudinary-sign`, {
+  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4321";
+
+  // Thử upload qua Cloudinary nếu backend cung cấp chữ ký
+  try {
+    const signRes = await fetch(`${baseUrl}/api/media/cloudinary-sign`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        resourceType,
+        transformation: needsAttachmentTransform ? "fl_attachment" : undefined,
+      }),
+    });
+
+    if (signRes.ok) {
+      const signJson = await signRes.json();
+      const signData = signJson?.data ?? signJson;
+
+      if (signData?.signature && signData?.uploadUrl) {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("signature", signData.signature);
+        formData.append("timestamp", String(signData.timestamp));
+        formData.append("api_key", signData.apiKey);
+        if (signData.folder) {
+          formData.append("folder", signData.folder);
+        }
+        if (signData.transformation) {
+          formData.append("transformation", signData.transformation);
+        }
+
+        const uploadRes = await fetch(signData.uploadUrl, {
+          method: "POST",
+          body: formData,
+        });
+
+        if (uploadRes.ok) {
+          const result = await uploadRes.json();
+          if (!result.error) {
+            const uploadedUrl = result.secure_url || result.url;
+            return {
+              key: result.public_id,
+              url: uploadedUrl,
+              visibility: "public",
+              thumbnailKey: resourceType === "video" ? (result.secure_url || result.url) : undefined,
+              contentType: file.type,
+              fileName: file.name,
+              size: result.bytes || file.size,
+              type: getAttachmentType(file.type),
+            };
+          }
+        }
+      }
+    }
+  } catch (cloudErr) {
+    console.warn("[uploadMedia] Cloudinary upload unavailable, falling back to local server upload:", cloudErr);
+  }
+
+  // Fallback: Upload trực tiếp lên backend /api/media/upload
+  const fallbackFormData = new FormData();
+  fallbackFormData.append("file", file);
+
+  const localRes = await fetch(`${baseUrl}/api/media/upload`, {
     method: "POST",
     headers: {
-      "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({
-      resourceType,
-      transformation: needsAttachmentTransform ? "fl_attachment" : undefined,
-    }),
+    body: fallbackFormData,
   });
 
-  if (!signRes.ok) {
-    const text = await signRes.text().catch(() => "");
-    throw new Error(text || "Không thể lấy chữ ký upload");
+  if (!localRes.ok) {
+    const errText = await localRes.text().catch(() => "");
+    throw new Error(errText || "Tải lên tệp thất bại");
   }
 
-  const signJson = await signRes.json();
-  const signData = signJson?.data ?? signJson;
-
-  if (!signData.signature || !signData.uploadUrl) {
-    throw new Error("Phản hồi chữ ký không hợp lệ");
-  }
-
-  // 2) Upload lên Cloudinary qua FormData
-  const formData = new FormData();
-  formData.append("file", file);
-  formData.append("signature", signData.signature);
-  formData.append("timestamp", String(signData.timestamp));
-  formData.append("api_key", signData.apiKey);
-  if (signData.folder) {
-    formData.append("folder", signData.folder);
-  }
-  // Include transformation in FormData for proper download behavior
-  if (signData.transformation) {
-    formData.append("transformation", signData.transformation);
-  }
-
-  const uploadRes = await fetch(signData.uploadUrl, {
-    method: "POST",
-    body: formData,
-  });
-
-  if (!uploadRes.ok) {
-    const text = await uploadRes.text().catch(() => "");
-    throw new Error(text || "Upload lên Cloudinary thất bại");
-  }
-
-  const result = await uploadRes.json();
-  console.log("[uploadMedia] Cloudinary result:", JSON.stringify(result, null, 2));
-
-  if (result.error) {
-    throw new Error(result.error.message || "Cloudinary upload error");
-  }
-
-  const uploadedUrl = result.secure_url || result.url;
-  console.log("[uploadMedia] Uploaded URL:", uploadedUrl);
-  console.log("[uploadMedia] Resource type:", resourceType, "Public ID:", result.public_id);
-
-  const finalUrl = uploadedUrl;
-
-  console.log("[uploadMedia] Final URL:", finalUrl);
+  const localJson = await localRes.json();
+  const localData = localJson?.data ?? localJson;
 
   return {
-    key: result.public_id,
-    url: finalUrl,
+    key: localData.key || localData.id || `local-${Date.now()}`,
+    url: localData.url || "",
     visibility: "public",
-    thumbnailKey: resourceType === "video" ? (result.secure_url || result.url) : null,
+    thumbnailKey: undefined,
     contentType: file.type,
     fileName: file.name,
-    size: result.bytes || file.size,
+    size: file.size,
     type: getAttachmentType(file.type),
   };
 }

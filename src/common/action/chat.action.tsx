@@ -482,6 +482,10 @@ export const initChat = (accessToken: string, currentUserId: string) => {
     }
   }).catch(() => {});
 
+  if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission().catch(() => {});
+  }
+
   state.setInitialized(true);
   state.setCurrentUserId(currentUserId);
 };
@@ -1183,6 +1187,25 @@ export const cleanupChat = () => {
     const conversationExists = state.listConversation.some((cvs) => cvs.id === normalized.conversationId);
     const isActiveConversation = state.activeConversationId === normalized.conversationId;
     const isOwnMessage = normalized.senderId === state.currentUserId;
+
+    if (!isOwnMessage && typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+      if (document.hidden) {
+        const title = normalized.senderName || "Zalo Chat";
+        const body = normalized.body || (normalized.attachments?.length ? "[Tệp đính kèm]" : "Bạn có tin nhắn mới");
+        try {
+          const n = new Notification(title, {
+            body,
+            icon: "/favicon.ico",
+          });
+          n.onclick = () => {
+            window.focus();
+            n.close();
+          };
+        } catch {
+          // ignore notification error
+        }
+      }
+    }
     
     if (!conversationExists) {
       setTimeout(() => fetchListConversation({ page: 1, limit: 20 }), 0);

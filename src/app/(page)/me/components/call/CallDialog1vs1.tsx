@@ -13,9 +13,11 @@ import MinimizeIcon from "@mui/icons-material/Minimize";
 import VolumeUpIcon from "@mui/icons-material/VolumeUp";
 import VolumeDownIcon from "@mui/icons-material/VolumeDown";
 import FlipCameraIosIcon from "@mui/icons-material/FlipCameraIos";
+import ScreenShareIcon from "@mui/icons-material/ScreenShare";
+import StopScreenShareIcon from "@mui/icons-material/StopScreenShare";
 import { useCallStore } from "@/src/common/store/useCallStore";
 import { useChatStore } from "@/src/common/store/useChatStore";
-import { endCall, answerCall, rejectCall, enableVideo } from "@/src/common/action/call.action";
+import { endCall, answerCall, rejectCall, enableVideo, toggleScreenShare } from "@/src/common/action/call.action";
 import { useTrans } from "@/src/common/utilities/hook/trans";
 import { userService } from "@/src/common/service/user-service";
 import { resolveMediaUrl } from "@/src/common/helpers/displayMedia.helpers";
@@ -254,7 +256,7 @@ export default function CallDialog1vs1() {
   const {
     status, type, localStream, remoteStream, minimized,
     conversationId, callId, callerName, callerAvatarUrl,
-    callStartTime, isEnding, isRejecting,
+    callStartTime, isEnding, isRejecting, isScreenSharing,
   } = useCallStore();
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
@@ -561,6 +563,9 @@ export default function CallDialog1vs1() {
           </ControlBtn>
           <ControlBtn onClick={handleToggleSpeaker} sx={speakerOn ? { backgroundColor: "#22C55E", "&:hover": { backgroundColor: "#16A34A" } } : {}}>
             {speakerOn ? <VolumeUpIcon /> : <VolumeDownIcon />}
+          </ControlBtn>
+          <ControlBtn onClick={toggleScreenShare} sx={isScreenSharing ? { backgroundColor: "#005AE0", color: "#fff", "&:hover": { backgroundColor: "#004BB5" } } : {}}>
+            {isScreenSharing ? <StopScreenShareIcon /> : <ScreenShareIcon />}
           </ControlBtn>
           <EndCallBtn onClick={handleEndCall} disabled={isEnding}>
             {isEnding ? <CircularProgress size={26} sx={{ color: "#fff" }} /> : <CallEndIcon />}

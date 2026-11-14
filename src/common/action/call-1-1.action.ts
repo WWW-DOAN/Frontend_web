@@ -92,7 +92,77 @@ export async function enableVideo(): Promise<void> {
   }
 }
 
+let originalCameraTrack: MediaStreamTrack | null = null;
+let screenStream: MediaStream | null = null;
+
+export async function toggleScreenShare(): Promise<void> {
+  const store = useCallStore.getState();
+  const pc = peerConnection;
+  if (!pc) return;
+
+  if (store.isScreenSharing) {
+    if (screenStream) {
+      screenStream.getTracks().forEach((t) => t.stop());
+      screenStream = null;
+    }
+    const videoSender = pc.getSenders().find((s) => s.track?.kind === "video");
+    if (videoSender && originalCameraTrack) {
+      void videoSender.replaceTrack(originalCameraTrack);
+      if (localStream) {
+        const oldTrack = localStream.getVideoTracks()[0];
+        if (oldTrack) localStream.removeTrack(oldTrack);
+        localStream.addTrack(originalCameraTrack);
+        store.setLocalStream(localStream);
+      }
+    }
+    store.setScreenSharing(false);
+  } else {
+    try {
+      const displayStream = await navigator.mediaDevices.getDisplayMedia({
+        video: true,
+        audio: false,
+      });
+      const screenTrack = displayStream.getVideoTracks()[0];
+      if (!screenTrack) return;
+
+      screenStream = displayStream;
+
+      const videoSender = pc.getSenders().find((s) => s.track?.kind === "video");
+      if (videoSender) {
+        if (videoSender.track) {
+          originalCameraTrack = videoSender.track;
+        }
+        void videoSender.replaceTrack(screenTrack);
+      } else {
+        pc.addTrack(screenTrack, displayStream);
+      }
+
+      if (localStream) {
+        const oldTrack = localStream.getVideoTracks()[0];
+        if (oldTrack && oldTrack !== screenTrack) {
+          localStream.removeTrack(oldTrack);
+        }
+        localStream.addTrack(screenTrack);
+        store.setLocalStream(localStream);
+      }
+
+      store.setScreenSharing(true);
+
+      screenTrack.onended = () => {
+        void toggleScreenShare();
+      };
+    } catch (err) {
+      console.warn("[Call] getDisplayMedia cancelled or error:", err);
+    }
+  }
+}
+
 export function cleanupLocalStream() {
+  if (screenStream) {
+    screenStream.getTracks().forEach((t) => t.stop());
+    screenStream = null;
+  }
+  originalCameraTrack = null;
   if (localStream) {
     localStream.getTracks().forEach((t) => t.stop());
     localStream = null;

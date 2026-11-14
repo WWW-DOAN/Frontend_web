@@ -13,6 +13,7 @@ export {
   endCall,
   handleCallSignal,
   enableVideo,
+  toggleScreenShare,
 } from './call-1-1.action';
 
 export {

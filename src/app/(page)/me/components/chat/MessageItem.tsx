@@ -40,6 +40,8 @@ import DoneAllRoundedIcon from "@mui/icons-material/DoneAllRounded";
 import CheckRoundedIcon from "@mui/icons-material/CheckRounded";
 import ScheduleRoundedIcon from "@mui/icons-material/ScheduleRounded";
 import EmojiEmotionsOutlinedIcon from "@mui/icons-material/EmojiEmotionsOutlined";
+import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
+import PauseRoundedIcon from "@mui/icons-material/PauseRounded";
 import FileAttachmentCard from "./FileAttachmentCard";
 import LinkPreviewCard from "./LinkPreviewCard";
 import { buildS3Url } from "@/src/common/components/MediaPreviewModal";
@@ -347,6 +349,144 @@ const ReplyContent = styled(Box)({
   maxWidth: "100%",
 });
 
+const VoicePlayer: React.FC<{ url: string; isOwn?: boolean }> = ({ url, isOwn }) => {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const togglePlay = () => {
+    if (!audioRef.current) return;
+    if (isPlaying) {
+      audioRef.current.pause();
+    } else {
+      audioRef.current.play().catch(console.error);
+    }
+  };
+
+  const handleTimeUpdate = () => {
+    if (audioRef.current) {
+      setCurrentTime(audioRef.current.currentTime);
+    }
+  };
+
+  const handleLoadedMetadata = () => {
+    if (audioRef.current && Number.isFinite(audioRef.current.duration)) {
+      setDuration(audioRef.current.duration);
+    }
+  };
+
+  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newTime = Number(e.target.value);
+    if (audioRef.current) {
+      audioRef.current.currentTime = newTime;
+      setCurrentTime(newTime);
+    }
+  };
+
+  const formatSec = (s: number) => {
+    if (!s || isNaN(s)) return "0:00";
+    const mins = Math.floor(s / 60);
+    const secs = Math.floor(s % 60);
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  return (
+    <Box
+      sx={{
+        display: "flex",
+        alignItems: "center",
+        gap: 1.5,
+        minWidth: 210,
+        maxWidth: 320,
+        py: 0.8,
+        px: 1,
+        borderRadius: 2,
+        bgcolor: isOwn ? "rgba(0, 90, 224, 0.08)" : "rgba(0, 0, 0, 0.04)",
+      }}
+    >
+      <audio
+        ref={audioRef}
+        src={url}
+        onPlay={() => setIsPlaying(true)}
+        onPause={() => setIsPlaying(false)}
+        onEnded={() => {
+          setIsPlaying(false);
+          setCurrentTime(0);
+        }}
+        onTimeUpdate={handleTimeUpdate}
+        onLoadedMetadata={handleLoadedMetadata}
+      />
+      <IconButton
+        onClick={togglePlay}
+        size="small"
+        sx={{
+          bgcolor: isOwn ? "#005AE0" : "#E2E8F0",
+          color: isOwn ? "#FFF" : "#0F172A",
+          "&:hover": {
+            bgcolor: isOwn ? "#004BB5" : "#CBD5E1",
+          },
+          width: 36,
+          height: 36,
+          flexShrink: 0,
+        }}
+      >
+        {isPlaying ? <PauseRoundedIcon fontSize="small" /> : <PlayArrowRoundedIcon fontSize="small" />}
+      </IconButton>
+      <Box sx={{ flex: 1, display: "flex", flexDirection: "column", gap: 0.3 }}>
+        <input
+          type="range"
+          min={0}
+          max={duration || 100}
+          value={currentTime}
+          onChange={handleSeek}
+          style={{
+            width: "100%",
+            height: 4,
+            accentColor: isOwn ? "#005AE0" : "#3B82F6",
+            cursor: "pointer",
+          }}
+        />
+        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <Typography variant="caption" sx={{ fontSize: 11, fontWeight: 500, color: isOwn ? "#334155" : "#64748B" }}>
+            {formatSec(currentTime)}
+          </Typography>
+          <Typography variant="caption" sx={{ fontSize: 11, color: isOwn ? "#64748B" : "#94A3B8" }}>
+            {formatSec(duration)}
+          </Typography>
+        </Box>
+      </Box>
+    </Box>
+  );
+};
+
+const renderMessageTextWithMentions = (text: string) => {
+  if (!text) return null;
+  const parts = text.split(/(@[^\s@]+(?:\s+[^\s@]+)?)/g);
+  return parts.map((part, index) => {
+    if (part.startsWith("@") && part.length > 1) {
+      return (
+        <Box
+          component="span"
+          key={index}
+          sx={{
+            color: "#005AE0",
+            fontWeight: 600,
+            bgcolor: "rgba(0, 90, 224, 0.08)",
+            px: 0.5,
+            py: 0.1,
+            borderRadius: 1,
+            display: "inline",
+          }}
+        >
+          {part}
+        </Box>
+      );
+    }
+    return part;
+  });
+};
+
 const MessageItem: React.FC<MessageItemProps> = ({
   content,
   sender,
@@ -486,19 +626,25 @@ const MessageItem: React.FC<MessageItemProps> = ({
     }
   };
 
+  const audioAttachments = attachments.filter((a) => {
+    const type = a.type?.toLowerCase();
+    const contentType = (a.contentType || a.content_type || '').toLowerCase();
+    return type === 'audio' || contentType.startsWith('audio/') || /\.(webm|mp3|wav|ogg|m4a)$/i.test(a.url || a.name || '');
+  });
+
   const mediaAttachments = attachments.filter((a) => {
     const type = a.type?.toLowerCase();
     const contentType = (a.contentType || a.content_type || '').toLowerCase();
-    const isMedia = type === 'image' || type === 'video' || contentType.startsWith('image/') || contentType.startsWith('video/');
+    const isMedia = (type === 'image' || type === 'video' || contentType.startsWith('image/') || contentType.startsWith('video/')) && !audioAttachments.includes(a);
     return isMedia;
   });
 
   const fileAttachments = attachments.filter((a) => {
     const type = a.type?.toLowerCase();
     const contentType = (a.contentType || a.content_type || '').toLowerCase();
-    const isFile = type === 'document' || type === 'file' || type === 'audio' ||
-      (!contentType.startsWith('image/') && !contentType.startsWith('video/'));
-    return isFile && !mediaAttachments.includes(a);
+    const isFile = type === 'document' || type === 'file' ||
+      (!contentType.startsWith('image/') && !contentType.startsWith('video/') && !contentType.startsWith('audio/'));
+    return isFile && !mediaAttachments.includes(a) && !audioAttachments.includes(a);
   });
 
   const linkUrls = content.match(/(https?:\/\/[^\s]+)/g) || [];
@@ -727,8 +873,20 @@ const MessageItem: React.FC<MessageItemProps> = ({
 
               {!!content && (
                 <MessageText>
-                  {content}
+                  {renderMessageTextWithMentions(content)}
                 </MessageText>
+              )}
+
+              {audioAttachments.length > 0 && (
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 1, mt: content ? 1 : 0 }}>
+                  {audioAttachments.map((att, idx) => (
+                    <VoicePlayer
+                      key={att.key || idx}
+                      url={att.url || buildS3Url(att.key)}
+                      isOwn={isOwn}
+                    />
+                  ))}
+                </Box>
               )}
 
               {mediaAttachments.length > 0 && (
