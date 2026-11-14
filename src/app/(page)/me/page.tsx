@@ -58,22 +58,33 @@ import { fetchAuthData } from "@/src/common/helpers/fetchDataHelpers";
 import { useTrans } from "@/src/common/utilities/hook/trans";
 /* ===================== styled ===================== */
 
-const Root = styled(Grid)(() => ({
+const Root = styled(Box)(() => ({
   height: "100vh",
   width: "100vw",
+  display: "flex",
+  flexDirection: "row",
+  overflow: "hidden",
 }));
 
-const ConversationColumn = styled(Grid)(() => ({
+const ConversationColumn = styled(Box)(() => ({
+  width: 345,
   minWidth: 345,
+  maxWidth: 345,
   height: "100vh",
   display: "flex",
   flexDirection: "column",
   borderRight: "1px solid #E5E7EB",
+  flexShrink: 0,
+  backgroundColor: "#fff",
 }));
 
-const ChatColumn = styled(Grid)(() => ({
-  // minWidth: 0,
+const ChatColumn = styled(Box)(() => ({
+  flex: 1,
+  minWidth: 0,
   height: "100vh",
+  display: "flex",
+  flexDirection: "column",
+  overflow: "hidden",
 }));
 
 // const InfConvColumn = styled(Grid)(() => ({
@@ -391,7 +402,7 @@ const Me = () => {
   // Desktop layout
   if (!isMobile) {
     return (
-      <Root container>
+      <Root>
         <AppSidebar selectedIcon={selectedIcon} onSelect={handleSelectedIcon} onOpenProfile={handleOpenProfile} onOpenSettings={handleOpenSettings} />
 
         {(selectedIcon === "chat" || selectedIcon === "contact") && (
@@ -461,7 +472,7 @@ const Me = () => {
           </ConversationColumn>
         )}
 
-        <ChatColumn size="grow">
+        <ChatColumn>
           <Panel>
             {selectedIcon === "chat" ? (
               !activeConversationId ? (
