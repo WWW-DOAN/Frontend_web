@@ -106,7 +106,17 @@ export const API = {
         `/api/conversations/${conversationId}/polls/${pollId}/options`,
     API_CONVERSATIONS_POLLS_REMOVE_OPTION: (conversationId: string, pollId: string, optionId: string) =>
         `/api/conversations/${conversationId}/polls/${pollId}/options/${optionId}`,
-    
+    API_CONVERSATIONS_POLLS_DELETE: (conversationId: string, pollId: string) =>
+        `/api/conversations/${conversationId}/polls/${pollId}`,
+
+    // Group Invite Link
+    API_GROUP_INVITE_LINK: (conversationId: string) =>
+        `/api/conversations/${conversationId}/invite-link`,
+    API_GROUP_INVITE_LINK_RESET: (conversationId: string) =>
+        `/api/conversations/${conversationId}/invite-link/reset`,
+    API_JOIN_GROUP_BY_CODE: (inviteCode: string) =>
+        `/api/conversations/join-by-code/${inviteCode}`,
+
     /* ================= MESSAGES ================= */
 
 

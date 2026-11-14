@@ -8,18 +8,25 @@ import {
   Box,
   Typography,
   Button,
-  LinearProgress,
   Chip,
   IconButton,
   Tooltip,
+  Menu,
+  MenuItem,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  ListItemIcon,
 } from "@mui/material";
 import {
   HowToVote,
-  Close,
   Add,
   MoreVert,
   Lock,
-  LockOpen,
+  Delete,
+  Edit,
 } from "@mui/icons-material";
 import { styled } from "@mui/material/styles";
 import { useState } from "react";
@@ -157,6 +164,7 @@ interface PollItemProps {
   onWithdraw?: () => void;
   onClose?: () => void;
   onEdit?: () => void;
+  onDelete?: () => void;
 }
 
 export default function PollItem({
@@ -166,11 +174,18 @@ export default function PollItem({
   onWithdraw,
   onClose,
   onEdit,
+  onDelete,
 }: PollItemProps) {
   const t = useTrans();
   const authData = useAuthStore((s) => s.authData);
   const [isVoting, setIsVoting] = useState(false);
   const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
+  const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [addOptionOpen, setAddOptionOpen] = useState(false);
+  const [newOptionLabel, setNewOptionLabel] = useState("");
+  const [isAddingOption, setIsAddingOption] = useState(false);
 
   const totalVotes = poll.options.reduce((sum, option) => sum + option.votes, 0);
   const isOwner = poll.createdBy === authData?.data?.user?.id;
@@ -222,6 +237,36 @@ export default function PollItem({
     }
   };
 
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      await chatService.deletePoll(conversationId, poll.id);
+      toast.success("Đã xóa cuộc bình chọn");
+      setDeleteDialogOpen(false);
+      onDelete?.();
+    } catch (error) {
+      toast.error("Không thể xóa cuộc bình chọn");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleAddOption = async () => {
+    if (!newOptionLabel.trim()) return;
+    setIsAddingOption(true);
+    try {
+      await chatService.addPollOption(conversationId, poll.id, newOptionLabel.trim());
+      toast.success("Đã thêm lựa chọn");
+      setNewOptionLabel("");
+      setAddOptionOpen(false);
+      onVote?.(); // refresh poll
+    } catch (error) {
+      toast.error("Không thể thêm lựa chọn");
+    } finally {
+      setIsAddingOption(false);
+    }
+  };
+
   const handleOptionClick = (optionId: string) => {
     if (poll.status !== "OPEN" || isExpired) return;
 
@@ -270,13 +315,41 @@ export default function PollItem({
                 </IconButton>
               </Tooltip>
             )}
-            {onEdit && (
-              <Tooltip title="Chỉnh sửa">
-                <IconButton size="small" onClick={onEdit}>
-                  <MoreVert sx={{ fontSize: 18 }} />
-                </IconButton>
-              </Tooltip>
-            )}
+            <Tooltip title="Thêm tùy chọn">
+              <IconButton
+                size="small"
+                onClick={(e) => setMenuAnchor(e.currentTarget)}
+              >
+                <MoreVert sx={{ fontSize: 18 }} />
+              </IconButton>
+            </Tooltip>
+            <Menu
+              anchorEl={menuAnchor}
+              open={Boolean(menuAnchor)}
+              onClose={() => setMenuAnchor(null)}
+            >
+              {onEdit && (
+                <MenuItem
+                  onClick={() => {
+                    setMenuAnchor(null);
+                    onEdit();
+                  }}
+                >
+                  <ListItemIcon><Edit fontSize="small" /></ListItemIcon>
+                  Chỉnh sửa
+                </MenuItem>
+              )}
+              <MenuItem
+                onClick={() => {
+                  setMenuAnchor(null);
+                  setDeleteDialogOpen(true);
+                }}
+                sx={{ color: "error.main" }}
+              >
+                <ListItemIcon><Delete fontSize="small" color="error" /></ListItemIcon>
+                Xóa cuộc bình chọn
+              </MenuItem>
+            </Menu>
           </Box>
         )}
       </Header>
@@ -340,10 +413,7 @@ export default function PollItem({
                   <Button
                     variant="outlined"
                     startIcon={<Add />}
-                    onClick={() => {
-                      // TODO: Open add option modal
-                      toast.info("Tính năng thêm lựa chọn đang phát triển");
-                    }}
+                    onClick={() => setAddOptionOpen(true)}
                   >
                     Thêm lựa chọn
                   </Button>
@@ -359,6 +429,42 @@ export default function PollItem({
           </Typography>
         )}
       </Actions>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Xóa cuộc bình chọn?</DialogTitle>
+        <DialogContent>
+          <Typography>Bạn có chắc chắn muốn xóa cuộc bình chọn &quot;{poll.question}&quot;? Hành động này không thể hoàn tác.</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialogOpen(false)} disabled={isDeleting}>Hủy</Button>
+          <Button onClick={handleDelete} color="error" disabled={isDeleting} variant="contained">
+            {isDeleting ? "Đang xóa..." : "Xóa"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Add Option Dialog */}
+      <Dialog open={addOptionOpen} onClose={() => setAddOptionOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Thêm lựa chọn</DialogTitle>
+        <DialogContent>
+          <TextField
+            fullWidth
+            autoFocus
+            label="Nội dung lựa chọn"
+            value={newOptionLabel}
+            onChange={(e) => setNewOptionLabel(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleAddOption()}
+            sx={{ mt: 1 }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setAddOptionOpen(false)} disabled={isAddingOption}>Hủy</Button>
+          <Button onClick={handleAddOption} disabled={!newOptionLabel.trim() || isAddingOption} variant="contained">
+            {isAddingOption ? "Đang thêm..." : "Thêm"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Root>
   );
 }

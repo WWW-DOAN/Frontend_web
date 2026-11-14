@@ -26,6 +26,7 @@ import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import FiberManualRecordIcon from "@mui/icons-material/FiberManualRecord";
 import PollOutlinedIcon from "@mui/icons-material/PollOutlined";
 import ContactPageOutlinedIcon from "@mui/icons-material/ContactPageOutlined";
+import LocationOnOutlinedIcon from "@mui/icons-material/LocationOnOutlined";
 import dynamic from "next/dynamic";
 import InsertEmoticonRoundedIcon from "@mui/icons-material/InsertEmoticonRounded";
 import { EmojiClickData } from "emoji-picker-react";
@@ -246,11 +247,17 @@ export default function ChatInput({
   // Active group members for @mention
   const members = (conv?.members || []).filter((m: any) => m.userId !== currentUserId);
 
+  // @All special entry for OWNER/ADMIN
+  const allEntry = { userId: "__all__", displayName: "All", fullName: "All", username: "All", avatarUrl: null };
+
   const filteredMembers = mentionFilter !== null
-    ? members.filter((m: any) => {
-        const name = (m.displayName || m.fullName || m.username || "").toLowerCase();
-        return name.includes(mentionFilter);
-      })
+    ? [
+        ...(isOwnerOrAdmin && "all".includes(mentionFilter) ? [allEntry] : []),
+        ...members.filter((m: any) => {
+          const name = (m.displayName || m.fullName || m.username || "").toLowerCase();
+          return name.includes(mentionFilter);
+        }),
+      ]
     : [];
 
   // Cleanup audio tracks on unmount
@@ -367,6 +374,32 @@ export default function ChatInput({
     },
     [handleFiles]
   );
+
+  // Location sharing
+  const handleShareLocation = useCallback(() => {
+    if (!navigator.geolocation) {
+      alert("Trình duyệt không hỗ trợ định vị");
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        const locationPayload: ChatAttachmentPayload = {
+          type: "location",
+          url: `https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}&zoom=15`,
+          name: `${latitude.toFixed(5)},${longitude.toFixed(5)}`,
+          content_type: "location",
+          metadata: {
+            lat: latitude,
+            lng: longitude,
+            address: `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`,
+          },
+        };
+        onSend("📍 Đã chia sẻ vị trí", [locationPayload]);
+      },
+      () => alert("Không thể lấy vị trí. Vui lòng cho phép truy cập.")
+    );
+  }, [onSend]);
 
   // Mention trigger check
   const checkMention = (text: string, cursorPos: number) => {
@@ -760,6 +793,16 @@ export default function ChatInput({
                 </IconBtn>
               </Tooltip>
             )}
+
+            <Tooltip title="Chia sẻ vị trí" placement="top">
+              <IconBtn
+                onClick={handleShareLocation}
+                disabled={disabled || uploading}
+                aria-label="share-location"
+              >
+                <LocationOnOutlinedIcon fontSize="small" />
+              </IconBtn>
+            </Tooltip>
 
             {uploading && <CircularProgress size={16} sx={{ mx: 1 }} />}
 

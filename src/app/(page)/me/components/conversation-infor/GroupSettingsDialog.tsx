@@ -14,6 +14,10 @@ import {
   FormControlLabel,
   Divider,
   CircularProgress,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
@@ -58,6 +62,7 @@ export default function GroupSettingsDialog({
   const [canAddMembers, setCanAddMembers] = useState(true);
   const [canCreatePolls, setCanCreatePolls] = useState(true);
   const [inviteApproval, setInviteApproval] = useState(false);
+  const [messageRetention, setMessageRetention] = useState<number>(0);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -71,6 +76,7 @@ export default function GroupSettingsDialog({
       }
       if (policies) {
         setInviteApproval(Boolean(policies.inviteApproval));
+        setMessageRetention(Number(policies.messageRetention) || 0);
       }
     }
   }, [conversation]);
@@ -91,6 +97,7 @@ export default function GroupSettingsDialog({
         },
         policies: {
           inviteApproval,
+          messageRetention,
         },
       });
       toast.success("Cập nhật cài đặt nhóm thành công");
@@ -206,6 +213,31 @@ export default function GroupSettingsDialog({
             disabled={!isAdmin || saving}
             color="primary"
           />
+        </SettingRow>
+        <Divider />
+
+        <SettingRow>
+          <Box sx={{ pr: 2 }}>
+            <Typography sx={{ fontSize: 14, fontWeight: 600, color: "#111827" }}>
+              Tin nhắn tự xóa
+            </Typography>
+            <Typography sx={{ fontSize: 12, color: "#6B7280" }}>
+              Tự động xóa tin nhắn sau khoảng thời gian đã đặt
+            </Typography>
+          </Box>
+          <FormControl size="small" sx={{ minWidth: 120 }}>
+            <Select
+              value={messageRetention}
+              onChange={(e) => setMessageRetention(Number(e.target.value))}
+              disabled={!isAdmin || saving}
+              sx={{ fontSize: 13 }}
+            >
+              <MenuItem value={0}>Tắt</MenuItem>
+              <MenuItem value={1}>1 ngày</MenuItem>
+              <MenuItem value={7}>7 ngày</MenuItem>
+              <MenuItem value={30}>30 ngày</MenuItem>
+            </Select>
+          </FormControl>
         </SettingRow>
       </DialogContent>
 

@@ -490,6 +490,40 @@ export const chatService = {
     return http.post(API.API_CONVERSATIONS_POLLS_CLOSE(conversationId, pollId));
   },
 
+  deletePoll(conversationId: string, pollId: string) {
+    return http.delete(API.API_CONVERSATIONS_POLLS_DELETE(conversationId, pollId));
+  },
+
+  updatePoll(conversationId: string, pollId: string, body: { question?: string }) {
+    return http.patch(API.API_CONVERSATIONS_POLLS_UPDATE(conversationId, pollId), body);
+  },
+
+  addPollOption(conversationId: string, pollId: string, label: string) {
+    return http.post(API.API_CONVERSATIONS_POLLS_ADD_OPTION(conversationId, pollId), { label });
+  },
+
+  removePollOption(conversationId: string, pollId: string, optionId: string) {
+    return http.delete(API.API_CONVERSATIONS_POLLS_REMOVE_OPTION(conversationId, pollId, optionId));
+  },
+
+  getGroupInviteLink(conversationId: string) {
+    return http.get<IApiResponse<{ inviteCode: string; inviteLink: string }>>(
+      API.API_GROUP_INVITE_LINK(conversationId)
+    );
+  },
+
+  resetGroupInviteLink(conversationId: string) {
+    return http.post<IApiResponse<{ inviteCode: string; inviteLink: string }>>(
+      API.API_GROUP_INVITE_LINK_RESET(conversationId)
+    );
+  },
+
+  joinGroupByCode(inviteCode: string) {
+    return http.post<IApiResponse<{ conversationId: string }>>(
+      API.API_JOIN_GROUP_BY_CODE(inviteCode)
+    );
+  },
+
 deleteMessage(conversationId: string, createdAt: number, messageId: string) {
     return http.delete(`/api/messages/${conversationId}/${createdAt}/${messageId}`);
   },

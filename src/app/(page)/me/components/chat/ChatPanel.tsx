@@ -12,6 +12,7 @@ import MessageList from "./MessageList";
 import ChatInput from "./ChatInput";
 import PollItem from "./PollItem";
 import CreatePollModal from "./CreatePollModal";
+import EditPollModal from "./EditPollModal";
 import ShareContactModal from "./ShareContactModal";
 import { chatService } from "@/src/common/service/chat-service";
 import { ConversationPoll } from "@/src/common/interface/conversation-interface";
@@ -112,6 +113,7 @@ export default function ChatPanel({
   const [polls, setPolls] = useState<ConversationPoll[]>([]);
   const [showPollsList, setShowPollsList] = useState(false);
   const [showCreatePollModal, setShowCreatePollModal] = useState(false);
+  const [editingPoll, setEditingPoll] = useState<ConversationPoll | null>(null);
   const [showShareContactModal, setShowShareContactModal] = useState(false);
 
   const {
@@ -410,6 +412,8 @@ export default function ChatPanel({
                   onVote={fetchPolls}
                   onWithdraw={fetchPolls}
                   onClose={fetchPolls}
+                  onEdit={() => setEditingPoll(poll)}
+                  onDelete={fetchPolls}
                 />
               ))}
             </Box>
@@ -495,6 +499,14 @@ export default function ChatPanel({
         conversationId={conversationId}
         onClose={() => setShowCreatePollModal(false)}
         onCreated={fetchPolls}
+      />
+
+      <EditPollModal
+        open={Boolean(editingPoll)}
+        poll={editingPoll}
+        conversationId={conversationId}
+        onClose={() => setEditingPoll(null)}
+        onUpdated={fetchPolls}
       />
 
       <ShareContactModal

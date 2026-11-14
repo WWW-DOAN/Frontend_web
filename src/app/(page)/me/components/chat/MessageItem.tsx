@@ -605,14 +605,15 @@ const renderMessageTextWithMentions = (text: string) => {
   const parts = text.split(/(@[^\s@]+(?:\s+[^\s@]+)?)/g);
   return parts.map((part, index) => {
     if (part.startsWith("@") && part.length > 1) {
+      const isAll = part.trim().toLowerCase() === "@all";
       return (
         <Box
           component="span"
           key={index}
           sx={{
-            color: "#005AE0",
+            color: isAll ? "#D97706" : "#005AE0",
             fontWeight: 600,
-            bgcolor: "rgba(0, 90, 224, 0.08)",
+            bgcolor: isAll ? "rgba(217, 119, 6, 0.1)" : "rgba(0, 90, 224, 0.08)",
             px: 0.5,
             py: 0.1,
             borderRadius: 1,
@@ -779,6 +780,10 @@ const MessageItem: React.FC<MessageItemProps> = ({
     return type === 'contact' || contentType === 'application/contact';
   });
 
+  const locationAttachments = attachments.filter((a) => {
+    return a.type?.toLowerCase() === 'location' || (a as any).content_type === 'location';
+  });
+
   const mediaAttachments = attachments.filter((a) => {
     const type = a.type?.toLowerCase();
     const contentType = (a.contentType || a.content_type || '').toLowerCase();
@@ -791,7 +796,7 @@ const MessageItem: React.FC<MessageItemProps> = ({
     const contentType = (a.contentType || a.content_type || '').toLowerCase();
     const isFile = type === 'document' || type === 'file' ||
       (!contentType.startsWith('image/') && !contentType.startsWith('video/') && !contentType.startsWith('audio/'));
-    return isFile && !mediaAttachments.includes(a) && !audioAttachments.includes(a) && !contactAttachments.includes(a);
+    return isFile && !mediaAttachments.includes(a) && !audioAttachments.includes(a) && !contactAttachments.includes(a) && !locationAttachments.includes(a);
   });
 
   const linkUrls = content.match(/(https?:\/\/[^\s]+)/g) || [];
@@ -1261,6 +1266,56 @@ const MessageItem: React.FC<MessageItemProps> = ({
                   {linkUrls.map((url, index) => (
                     <LinkPreviewCard key={index} url={url} isOwn={isOwn} />
                   ))}
+                </Box>
+              )}
+
+              {locationAttachments.length > 0 && (
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 1, mt: 1 }}>
+                  {locationAttachments.map((att, index) => {
+                    const meta = (att as any).metadata || {};
+                    const lat = meta.lat ?? att.name?.split(",")[0];
+                    const lng = meta.lng ?? att.name?.split(",")[1];
+                    const address = meta.address || att.name || "Vị trí";
+                    const mapsUrl = `https://www.google.com/maps?q=${lat},${lng}`;
+                    const osmEmbedUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${Number(lng)-0.005},${Number(lat)-0.005},${Number(lng)+0.005},${Number(lat)+0.005}&layer=mapnik&marker=${lat},${lng}`;
+                    return (
+                      <Box
+                        key={att.key || index}
+                        sx={{
+                          borderRadius: 2,
+                          overflow: "hidden",
+                          border: "1px solid #E5E7EB",
+                          maxWidth: 280,
+                          bgcolor: "#fff",
+                        }}
+                      >
+                        <Box
+                          component="iframe"
+                          src={osmEmbedUrl}
+                          sx={{ width: "100%", height: 150, border: "none", display: "block" }}
+                          title="Bản đồ vị trí"
+                        />
+                        <Box sx={{ p: 1.5 }}>
+                          <Typography variant="caption" color="text.secondary" display="block">
+                            📍 {address}
+                          </Typography>
+                          <Box sx={{ display: "flex", gap: 1, mt: 0.5 }}>
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              component="a"
+                              href={mapsUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              sx={{ fontSize: 11, textTransform: "none" }}
+                            >
+                              Google Maps
+                            </Button>
+                          </Box>
+                        </Box>
+                      </Box>
+                    );
+                  })}
                 </Box>
               )}
             </>

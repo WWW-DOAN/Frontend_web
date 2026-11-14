@@ -164,7 +164,7 @@ export default function PendingAttachmentList({
               </FilePreview>
             )}
 
-            <RemoveButton size="small" onClick={() => onRemove(item.key)}>
+            <RemoveButton size="small" onClick={() => onRemove(item.key ?? "")}>
               <CloseIcon sx={{ width: 12, height: 12 }} />
             </RemoveButton>
           </PendingItem>

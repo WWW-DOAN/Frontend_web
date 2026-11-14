@@ -25,6 +25,7 @@ import SecuritySection from "./SecuritySection";
 import GroupMemberListView from "./GroupMemberListView";
 import AddMemberGroupDialog from "./AddMemberGroupDialog";
 import GroupSettingsDialog from "./GroupSettingsDialog";
+import InviteLinkModal from "./InviteLinkModal";
 
 interface InfConvColumnProps {
   conversationId: string;
@@ -74,6 +75,7 @@ export default function InfConvColumn({ conversationId, onClose }: InfConvColumn
   const [friends, setFriends] = useState<Array<{ id: string; name: string; avatar?: string; phone?: string }>>([]);
   const [memberSearch, setMemberSearch] = useState("");
   const [showGroupSettings, setShowGroupSettings] = useState(false);
+  const [showInviteLink, setShowInviteLink] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -288,12 +290,49 @@ export default function InfConvColumn({ conversationId, onClose }: InfConvColumn
         </Box>
       )}
 
+      {isGroup && isAdmin && (
+        <Box sx={{ px: 2, pb: 1 }}>
+          <Box
+            component="button"
+            onClick={() => setShowInviteLink(true)}
+            sx={{
+              width: "100%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 1,
+              py: 1,
+              px: 2,
+              borderRadius: "8px",
+              bgcolor: "#EFF6FF",
+              border: "1px solid #BFDBFE",
+              color: "#1D4ED8",
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: "pointer",
+              transition: "all 0.2s",
+              "&:hover": { bgcolor: "#DBEAFE" },
+            }}
+          >
+            🔗 Mời vào nhóm bằng liên kết
+          </Box>
+        </Box>
+      )}
+
       {isGroup && (
         <GroupSettingsDialog
           open={showGroupSettings}
           conversationId={conversationId}
           onClose={() => setShowGroupSettings(false)}
           isAdmin={isAdmin}
+        />
+      )}
+
+      {isGroup && isAdmin && (
+        <InviteLinkModal
+          open={showInviteLink}
+          conversationId={conversationId}
+          onClose={() => setShowInviteLink(false)}
         />
       )}
 
