@@ -18,6 +18,7 @@ import {
   MenuItem,
   Paper,
   Popper,
+  Slider,
   Tab,
   Tabs,
   TextField,
@@ -56,6 +57,7 @@ interface Attachment {
   size?: number;
   contentType?: string;
   content_type?: string;
+  duration?: number;
 }
 
 interface MessageItemProps {
@@ -349,43 +351,115 @@ const ReplyContent = styled(Box)({
   maxWidth: "100%",
 });
 
-const VoicePlayer: React.FC<{ url: string; isOwn?: boolean }> = ({ url, isOwn }) => {
+const extractAudioDuration = (att: any): number => {
+  if (att?.duration && Number.isFinite(Number(att.duration)) && Number(att.duration) > 0) {
+    return Number(att.duration);
+  }
+  const name = att?.name || att?.fileName || att?.key || att?.url || "";
+  const match = name.match(/_d(\d+)\./);
+  if (match) {
+    const sec = parseInt(match[1], 10);
+    if (!isNaN(sec) && sec > 0) return sec;
+  }
+  return 0;
+};
+
+const VoicePlayer: React.FC<{ url: string; isOwn?: boolean; initialDuration?: number }> = ({
+  url,
+  isOwn,
+  initialDuration = 0,
+}) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
+  const [duration, setDuration] = useState(initialDuration > 0 ? initialDuration : 0);
+  const isSeekingRef = useRef(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Sync initialDuration if changed
+  useEffect(() => {
+    if (initialDuration > 0 && duration === 0) {
+      setDuration(initialDuration);
+    }
+  }, [initialDuration, duration]);
+
+  // Use Web Audio API as reliable duration decoder for WebM without duration headers
+  useEffect(() => {
+    if (!url) return;
+    let isCancelled = false;
+
+    const decodeDuration = async () => {
+      try {
+        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+        if (!AudioCtx) return;
+        const res = await fetch(url);
+        const arrayBuffer = await res.arrayBuffer();
+        if (isCancelled) return;
+
+        const ctx = new AudioCtx();
+        const decoded = await ctx.decodeAudioData(arrayBuffer);
+        if (!isCancelled && decoded && Number.isFinite(decoded.duration) && decoded.duration > 0) {
+          setDuration(decoded.duration);
+        }
+        ctx.close().catch(() => {});
+      } catch {
+        // Ignore and fallback to HTMLAudioElement loadedmetadata
+      }
+    };
+
+    decodeDuration();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [url]);
 
   const togglePlay = () => {
     if (!audioRef.current) return;
     if (isPlaying) {
       audioRef.current.pause();
     } else {
+      if (currentTime >= (duration || 0) && duration > 0) {
+        audioRef.current.currentTime = 0;
+        setCurrentTime(0);
+      }
       audioRef.current.play().catch(console.error);
     }
   };
 
   const handleTimeUpdate = () => {
-    if (audioRef.current) {
+    if (audioRef.current && !isSeekingRef.current) {
       setCurrentTime(audioRef.current.currentTime);
+      if (
+        (!duration || !Number.isFinite(duration) || duration === 0) &&
+        Number.isFinite(audioRef.current.duration) &&
+        audioRef.current.duration > 0
+      ) {
+        setDuration(audioRef.current.duration);
+      }
     }
   };
 
   const handleLoadedMetadata = () => {
-    if (audioRef.current && Number.isFinite(audioRef.current.duration)) {
-      setDuration(audioRef.current.duration);
-    }
-  };
-
-  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newTime = Number(e.target.value);
-    if (audioRef.current) {
-      audioRef.current.currentTime = newTime;
-      setCurrentTime(newTime);
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (Number.isFinite(audio.duration) && audio.duration > 0) {
+      setDuration(audio.duration);
+    } else {
+      // Chromium WebM Infinity duration workaround
+      const onSeek = () => {
+        audio.removeEventListener("timeupdate", onSeek);
+        if (Number.isFinite(audio.currentTime) && audio.currentTime > 0) {
+          setDuration(audio.currentTime);
+        }
+        audio.currentTime = 0;
+      };
+      audio.addEventListener("timeupdate", onSeek);
+      audio.currentTime = 1e7;
     }
   };
 
   const formatSec = (s: number) => {
-    if (!s || isNaN(s)) return "0:00";
+    if (!s || isNaN(s) || !Number.isFinite(s)) return "0:00";
     const mins = Math.floor(s / 60);
     const secs = Math.floor(s % 60);
     return `${mins}:${secs.toString().padStart(2, "0")}`;
@@ -397,61 +471,123 @@ const VoicePlayer: React.FC<{ url: string; isOwn?: boolean }> = ({ url, isOwn })
         display: "flex",
         alignItems: "center",
         gap: 1.5,
-        minWidth: 210,
+        minWidth: 230,
         maxWidth: 320,
-        py: 0.8,
-        px: 1,
-        borderRadius: 2,
-        bgcolor: isOwn ? "rgba(0, 90, 224, 0.08)" : "rgba(0, 0, 0, 0.04)",
+        py: 1,
+        px: 1.5,
+        borderRadius: 3,
+        bgcolor: isOwn ? "#F0F7FF" : "#F8FAFC",
+        border: "1px solid",
+        borderColor: isOwn ? "#D0E2FF" : "#E2E8F0",
+        boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
       }}
     >
       <audio
         ref={audioRef}
         src={url}
+        preload="metadata"
         onPlay={() => setIsPlaying(true)}
         onPause={() => setIsPlaying(false)}
         onEnded={() => {
           setIsPlaying(false);
           setCurrentTime(0);
+          if (audioRef.current) audioRef.current.currentTime = 0;
         }}
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
       />
       <IconButton
         onClick={togglePlay}
-        size="small"
         sx={{
-          bgcolor: isOwn ? "#005AE0" : "#E2E8F0",
-          color: isOwn ? "#FFF" : "#0F172A",
+          bgcolor: "#0068FF",
+          color: "#FFFFFF",
           "&:hover": {
-            bgcolor: isOwn ? "#004BB5" : "#CBD5E1",
+            bgcolor: "#0052CC",
           },
           width: 36,
           height: 36,
           flexShrink: 0,
+          boxShadow: "0 2px 6px rgba(0, 104, 255, 0.25)",
         }}
       >
-        {isPlaying ? <PauseRoundedIcon fontSize="small" /> : <PlayArrowRoundedIcon fontSize="small" />}
+        {isPlaying ? (
+          <PauseRoundedIcon sx={{ fontSize: 22 }} />
+        ) : (
+          <PlayArrowRoundedIcon sx={{ fontSize: 22, ml: 0.2 }} />
+        )}
       </IconButton>
-      <Box sx={{ flex: 1, display: "flex", flexDirection: "column", gap: 0.3 }}>
-        <input
-          type="range"
+      <Box sx={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, justifyContent: "center" }}>
+        <Slider
+          size="small"
+          value={Math.min(currentTime, duration > 0 ? duration : 0)}
           min={0}
-          max={duration || 100}
-          value={currentTime}
-          onChange={handleSeek}
-          style={{
-            width: "100%",
+          max={duration > 0 ? duration : 1}
+          step={0.05}
+          onChange={(_, val) => {
+            isSeekingRef.current = true;
+            setCurrentTime(val as number);
+          }}
+          onChangeCommitted={(_, val) => {
+            isSeekingRef.current = false;
+            const newTime = val as number;
+            if (audioRef.current) {
+              audioRef.current.currentTime = newTime;
+            }
+            setCurrentTime(newTime);
+          }}
+          sx={{
+            color: "#0068FF",
             height: 4,
-            accentColor: isOwn ? "#005AE0" : "#3B82F6",
-            cursor: "pointer",
+            padding: "8px 0 !important",
+            "& .MuiSlider-thumb": {
+              width: 12,
+              height: 12,
+              backgroundColor: "#0068FF",
+              boxShadow: "0 1px 3px rgba(0,0,0,0.3)",
+              transition: "transform 0.1s ease",
+              "&:hover, &.Mui-focusVisible": {
+                boxShadow: "0 0 0 6px rgba(0, 104, 255, 0.16)",
+                transform: "scale(1.2)",
+              },
+              "&.Mui-active": {
+                transform: "scale(1.3)",
+              },
+            },
+            "& .MuiSlider-track": {
+              height: 4,
+              borderRadius: 2,
+              border: "none",
+              backgroundColor: "#0068FF",
+            },
+            "& .MuiSlider-rail": {
+              height: 4,
+              borderRadius: 2,
+              opacity: 0.25,
+              backgroundColor: "#64748B",
+            },
           }}
         />
-        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <Typography variant="caption" sx={{ fontSize: 11, fontWeight: 500, color: isOwn ? "#334155" : "#64748B" }}>
+        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mt: -0.2 }}>
+          <Typography
+            sx={{
+              fontSize: 11,
+              fontWeight: 600,
+              color: "#0068FF",
+              fontVariantNumeric: "tabular-nums",
+              lineHeight: 1,
+            }}
+          >
             {formatSec(currentTime)}
           </Typography>
-          <Typography variant="caption" sx={{ fontSize: 11, color: isOwn ? "#64748B" : "#94A3B8" }}>
+          <Typography
+            sx={{
+              fontSize: 11,
+              fontWeight: 500,
+              color: "#64748B",
+              fontVariantNumeric: "tabular-nums",
+              lineHeight: 1,
+            }}
+          >
             {formatSec(duration)}
           </Typography>
         </Box>
@@ -884,6 +1020,7 @@ const MessageItem: React.FC<MessageItemProps> = ({
                       key={att.key || idx}
                       url={att.url || buildS3Url(att.key)}
                       isOwn={isOwn}
+                      initialDuration={extractAudioDuration(att)}
                     />
                   ))}
                 </Box>

@@ -15,6 +15,7 @@ export interface IUploadedMedia {
     fileName: string;
     size: number;
     type: AttachmentType;
+    duration?: number;
 }
 
 export interface ChatAttachmentPayload {
@@ -27,4 +28,5 @@ export interface ChatAttachmentPayload {
     thumbnail_key?: string;
     thumbnailUrl?: string | null;
     visibility: "public" | "private";
+    duration?: number;
 }

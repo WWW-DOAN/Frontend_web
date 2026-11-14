@@ -203,6 +203,7 @@ export default function ChatInput({
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingTimerRef = useRef<any>(null);
+  const recordingStartTimeRef = useRef<number>(0);
   const audioStreamRef = useRef<MediaStream | null>(null);
 
   // Mention state
@@ -482,6 +483,7 @@ export default function ChatInput({
       recorder.start(100);
       setIsRecording(true);
       setRecordingDuration(0);
+      recordingStartTimeRef.current = Date.now();
       recordingTimerRef.current = setInterval(() => {
         setRecordingDuration((d) => d + 1);
       }, 1000);
@@ -512,6 +514,11 @@ export default function ChatInput({
     const recorder = mediaRecorderRef.current;
     if (!recorder || recorder.state === "inactive") return;
 
+    const elapsedSec = Math.max(
+      1,
+      recordingDuration || Math.round((Date.now() - (recordingStartTimeRef.current || Date.now())) / 1000)
+    );
+
     recorder.onstop = async () => {
       if (audioStreamRef.current) {
         audioStreamRef.current.getTracks().forEach((t) => t.stop());
@@ -520,7 +527,8 @@ export default function ChatInput({
       const chunks = audioChunksRef.current;
       if (!chunks.length || !currentUserId) return;
       const audioBlob = new Blob(chunks, { type: "audio/webm" });
-      const audioFile = new File([audioBlob], `voice_${Date.now()}.webm`, {
+      const voiceFilename = `voice_${Date.now()}_d${elapsedSec}.webm`;
+      const audioFile = new File([audioBlob], voiceFilename, {
         type: "audio/webm",
       });
 
@@ -531,10 +539,11 @@ export default function ChatInput({
           key: result.key,
           url: result.url,
           type: "audio",
-          name: result.fileName,
+          name: result.fileName || voiceFilename,
           size: result.size,
           content_type: "audio/webm",
           visibility: result.visibility,
+          duration: elapsedSec,
         };
         onSend("", [attachment]);
       } catch (err) {
