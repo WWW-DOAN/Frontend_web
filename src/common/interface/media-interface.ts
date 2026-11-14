@@ -1,5 +1,5 @@
 export type MediaVisibility = "public" | "private";
-export type AttachmentType = "image" | "video" | "audio" | "document";
+export type AttachmentType = "image" | "video" | "audio" | "document" | "contact";
 export interface UploadMediaParams {
     file: File;
     userId: string;
@@ -21,12 +21,13 @@ export interface IUploadedMedia {
 export interface ChatAttachmentPayload {
     key: string;
     url?: string | null;
-    type: "image" | "video" | "audio" | "document";
+    type: "image" | "video" | "audio" | "document" | "contact";
     name: string;
     size: number;
-    content_type: string;
+    content_type?: string;
+    contentType?: string;
     thumbnail_key?: string;
     thumbnailUrl?: string | null;
-    visibility: "public" | "private";
+    visibility?: "public" | "private";
     duration?: number;
 }

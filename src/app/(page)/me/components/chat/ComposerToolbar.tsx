@@ -5,6 +5,8 @@ import { Box, CircularProgress, IconButton } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import ImageOutlinedIcon from "@mui/icons-material/ImageOutlined";
 import AttachFileRoundedIcon from "@mui/icons-material/AttachFileRounded";
+import PollOutlinedIcon from "@mui/icons-material/PollOutlined";
+import ContactPageOutlinedIcon from "@mui/icons-material/ContactPageOutlined";
 
 interface ComposerToolbarProps {
   disabled?: boolean;
@@ -13,6 +15,9 @@ interface ComposerToolbarProps {
   fileInputRef: RefObject<HTMLInputElement | null>;
   onImageChange: ChangeEventHandler<HTMLInputElement>;
   onFileChange: ChangeEventHandler<HTMLInputElement>;
+  isGroup?: boolean;
+  onOpenCreatePoll?: () => void;
+  onOpenShareContact?: () => void;
 }
 
 const ToolbarRow = styled(Box)({
@@ -43,6 +48,9 @@ export default function ComposerToolbar({
   fileInputRef,
   onImageChange,
   onFileChange,
+  isGroup,
+  onOpenCreatePoll,
+  onOpenShareContact,
 }: ComposerToolbarProps) {
   return (
     <ToolbarRow data-testid="toolbar-input-chat">
@@ -61,6 +69,26 @@ export default function ComposerToolbar({
       >
         <AttachFileRoundedIcon fontSize="small" />
       </StyledIconButton>
+
+      {isGroup && onOpenCreatePoll && (
+        <StyledIconButton
+          onClick={onOpenCreatePoll}
+          disabled={disabled || uploading}
+          aria-label="create-poll"
+        >
+          <PollOutlinedIcon fontSize="small" />
+        </StyledIconButton>
+      )}
+
+      {onOpenShareContact && (
+        <StyledIconButton
+          onClick={onOpenShareContact}
+          disabled={disabled || uploading}
+          aria-label="share-contact"
+        >
+          <ContactPageOutlinedIcon fontSize="small" />
+        </StyledIconButton>
+      )}
 
       {uploading && <CircularProgress size={16} />}
 

@@ -257,6 +257,28 @@ export default function ProfileCard({ onAddMember }: ProfileCardProps) {
   const [openEditName, setOpenEditName] = useState(false);
   const [editNameValue, setEditNameValue] = useState("");
 
+  const [openEditNickname, setOpenEditNickname] = useState(false);
+  const [nicknameValue, setNicknameValue] = useState("");
+
+  const handleOpenEditNickname = () => {
+    setNicknameValue(otherMember?.nickname || otherMember?.displayName || "");
+    setOpenEditNickname(true);
+  };
+
+  const handleSaveNickname = async () => {
+    if (!activeConversationId) return;
+    try {
+      await chatService.updateConversationSettings(activeConversationId, {
+        nickname: nicknameValue.trim() || undefined,
+      });
+      toast.success("Đã cập nhật biệt danh");
+      await refresh();
+      setOpenEditNickname(false);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || "Không thể cập nhật biệt danh");
+    }
+  };
+
   const handleOpenEditName = () => {
     setEditNameValue(currentConversation?.name ?? "");
     setOpenEditName(true);
@@ -374,11 +396,19 @@ export default function ProfileCard({ onAddMember }: ProfileCardProps) {
 
         <NameRow>
           <ConversationName title={currentConversation?.name ?? ""}>
-            {currentConversation?.name ?? t("CHAT.DEFAULT_NAME")}
+            {isGroup
+              ? (currentConversation?.name ?? t("CHAT.DEFAULT_NAME"))
+              : (otherMember?.nickname || otherMember?.displayName || currentConversation?.name || t("CHAT.DEFAULT_NAME"))}
           </ConversationName>
 
           {canEdit && isGroup && (
             <EditCircleButton aria-label={t("CONVO.EDIT_NAME_ARIA")} onClick={handleOpenEditName}>
+              <EditOutlinedIcon sx={{ fontSize: 16 }} />
+            </EditCircleButton>
+          )}
+
+          {!isGroup && (
+            <EditCircleButton aria-label="Đặt biệt danh" onClick={handleOpenEditNickname}>
               <EditOutlinedIcon sx={{ fontSize: 16 }} />
             </EditCircleButton>
           )}
@@ -596,6 +626,72 @@ export default function ProfileCard({ onAddMember }: ProfileCardProps) {
             }}
           >
             {t("CONVO.SAVE_CHANGES")}
+          </Button>
+        </DialogActionsStyled>
+      </StyledDialog>
+
+      <StyledDialog open={openEditNickname} onClose={() => setOpenEditNickname(false)}>
+        <DialogTitleStyled
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            pb: 1.5,
+          }}
+        >
+          <Typography sx={{ fontSize: 18, fontWeight: 700, color: "#081B3A" }}>
+            Đặt biệt danh
+          </Typography>
+          <IconButton onClick={() => setOpenEditNickname(false)} size="small" sx={{ width: 32, height: 32, background: "#F3F5F7" }}>
+            <CloseRoundedIcon sx={{ fontSize: 18 }} />
+          </IconButton>
+        </DialogTitleStyled>
+        <DialogContentStyled sx={{ pt: 2, pb: 1 }}>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+            <Typography sx={{ fontSize: 13, color: "#64748B" }}>
+              Biệt danh này chỉ hiển thị với riêng bạn trong cuộc trò chuyện này.
+            </Typography>
+            <TextField
+              fullWidth
+              size="small"
+              placeholder="Nhập biệt danh..."
+              value={nicknameValue}
+              onChange={(e) => setNicknameValue(e.target.value)}
+              autoFocus
+            />
+          </Box>
+        </DialogContentStyled>
+        <DialogActionsStyled sx={{ px: 3, pb: 2.5, pt: 1.5, gap: 1.5 }}>
+          <Button
+            fullWidth
+            onClick={() => setOpenEditNickname(false)}
+            sx={{
+              height: 42,
+              borderRadius: 12,
+              background: "#F3F5F7",
+              color: "#081B3A",
+              fontSize: 14,
+              fontWeight: 700,
+              textTransform: "none",
+            }}
+          >
+            Hủy
+          </Button>
+          <Button
+            fullWidth
+            onClick={handleSaveNickname}
+            sx={{
+              height: 42,
+              borderRadius: 12,
+              background: "#0068FF",
+              color: "#FFFFFF",
+              fontSize: 14,
+              fontWeight: 700,
+              textTransform: "none",
+              "&:hover": { background: "#0052CC" },
+            }}
+          >
+            Lưu
           </Button>
         </DialogActionsStyled>
       </StyledDialog>

@@ -856,6 +856,19 @@ export const deleteMessage = async (
   }
 };
 
+export const deleteMessageForMe = (conversationId: string, messageId: string) => {
+  useChatStore.setState((prev) => {
+    const msgs = prev.messagesByConversation[conversationId] || [];
+    const updatedMessages = msgs.filter((msg) => msg.messageId !== messageId);
+    return {
+      messagesByConversation: {
+        ...prev.messagesByConversation,
+        [conversationId]: updatedMessages,
+      },
+    };
+  });
+};
+
 export const pinMessage = async (conversationId: string, messageId: string, createdAt: number) => {
   try {
     const state = useChatStore.getState();

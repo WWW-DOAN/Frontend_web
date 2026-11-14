@@ -1,4 +1,4 @@
-export type AttachmentType = "image" | "document" | "audio" | "video";
+export type AttachmentType = "image" | "document" | "audio" | "video" | "contact";
 
 export interface ReactionDto {
   emoji: string;
@@ -40,6 +40,26 @@ export interface ConversationDto {
   lastMessageAt?: string | number | null;
   createdAt?: string | null;
   members?: ConversationMemberDto[];
+  settings?: {
+    permissions?: {
+      canAddMembers?: boolean;
+      canRemoveMembers?: boolean;
+      canCreatePolls?: boolean;
+      canStartCall?: boolean;
+      canSendMessage?: boolean;
+    };
+    policies?: {
+      maxMembers?: number;
+      inviteApproval?: boolean;
+      messageRetention?: number;
+    };
+    features?: {
+      polls?: boolean;
+      calls?: boolean;
+      fileSharing?: boolean;
+      reactions?: boolean;
+    };
+  };
 }
 export interface ConversationListMeta {
   total: number;

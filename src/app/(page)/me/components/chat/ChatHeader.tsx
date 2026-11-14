@@ -172,13 +172,17 @@ export default function ChatHeader({
         ) : (
           <AppAvatar
             src={resolveMediaUrl(otherMember?.avatarUrl || conversation?.avatarUrl) || undefined}
-            name={conversation?.name || "C"}
+            name={otherMember?.nickname || otherMember?.displayName || conversation?.name || "C"}
             size={40}
             isGroup={false}
           />
         )}
         <ConvInfo>
-          <ConvName>{conversation?.name || t("CHAT.DEFAULT_NAME")}</ConvName>
+          <ConvName>
+            {isDirect
+              ? (otherMember?.nickname || otherMember?.displayName || conversation?.name || t("CHAT.DEFAULT_NAME"))
+              : (conversation?.name || t("CHAT.DEFAULT_NAME"))}
+          </ConvName>
           <ConvStatus>
             {!isDirect && <StatusDot online={socketConnected} />}
             {isDirect && <StatusDot online={statusOnline} />}

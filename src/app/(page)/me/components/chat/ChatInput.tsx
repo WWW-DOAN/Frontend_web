@@ -24,6 +24,8 @@ import ImageOutlinedIcon from "@mui/icons-material/ImageOutlined";
 import AttachFileRoundedIcon from "@mui/icons-material/AttachFileRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import FiberManualRecordIcon from "@mui/icons-material/FiberManualRecord";
+import PollOutlinedIcon from "@mui/icons-material/PollOutlined";
+import ContactPageOutlinedIcon from "@mui/icons-material/ContactPageOutlined";
 import dynamic from "next/dynamic";
 import InsertEmoticonRoundedIcon from "@mui/icons-material/InsertEmoticonRounded";
 import { EmojiClickData } from "emoji-picker-react";
@@ -54,6 +56,9 @@ interface ChatInputProps {
     senderName?: string;
   } | null;
   onCancelReply?: () => void;
+  isGroup?: boolean;
+  onOpenCreatePoll?: () => void;
+  onOpenShareContact?: () => void;
 }
 
 const ChatInputContainer = styled(Box)({
@@ -189,8 +194,29 @@ export default function ChatInput({
   onSend,
   replyMessage,
   onCancelReply,
+  isGroup: isGroupProp,
+  onOpenCreatePoll,
+  onOpenShareContact,
 }: ChatInputProps) {
   const isMobile = useMediaQuery("(max-width:767px)");
+  const currentUserId = useChatStore((state) => state.currentUserId);
+  const activeConversationId = useChatStore((state) => state.activeConversationId);
+  const conversationDetailById = useChatStore((state) => state.conversationDetailById);
+  const listConversation = useChatStore((state) => state.listConversation);
+  const t = useTrans();
+
+  const conv = conversationId
+    ? conversationDetailById[conversationId] || listConversation.find((c) => c.id === conversationId)
+    : activeConversationId
+    ? conversationDetailById[activeConversationId] || listConversation.find((c) => c.id === activeConversationId)
+    : null;
+
+  const isGroupConv = isGroupProp ?? (conv?.type === "group" || conv?.type === "GROUP");
+  const myMember = conv?.members?.find((m: any) => m.userId === currentUserId);
+  const isOwnerOrAdmin = myMember?.role === "OWNER" || myMember?.role === "ADMIN";
+  const canSendInGroup = conv?.settings?.permissions?.canSendMessage !== false;
+  const isSendBlocked = isGroupConv && !isOwnerOrAdmin && !canSendInGroup;
+
   const [value, setValue] = useState("");
   const [openEmoji, setOpenEmoji] = useState(false);
   const [pendingAttachments, setPendingAttachments] = useState<ChatAttachmentPayload[]>([]);
@@ -216,17 +242,8 @@ export default function ChatInput({
   const hasText = !!value.trim();
   const hasAttachments = pendingAttachments.length > 0;
   const lastTypingTime = useRef<number>(0);
-  const currentUserId = useChatStore((state) => state.currentUserId);
-  const activeConversationId = useChatStore((state) => state.activeConversationId);
-  const conversationDetailById = useChatStore((state) => state.conversationDetailById);
-  const listConversation = useChatStore((state) => state.listConversation);
-  const t = useTrans();
 
   // Active group members for @mention
-  const conv = activeConversationId
-    ? conversationDetailById[activeConversationId] || listConversation.find((c) => c.id === activeConversationId)
-    : null;
-  const isGroup = conv?.type === "GROUP";
   const members = (conv?.members || []).filter((m: any) => m.userId !== currentUserId);
 
   const filteredMembers = mentionFilter !== null
@@ -353,7 +370,7 @@ export default function ChatInput({
 
   // Mention trigger check
   const checkMention = (text: string, cursorPos: number) => {
-    if (!isGroup) {
+    if (!isGroupConv) {
       setMentionFilter(null);
       return;
     }
@@ -403,7 +420,7 @@ export default function ChatInput({
         }
       }
     },
-    [conversationId, isGroup]
+    [conversationId, isGroupConv]
   );
 
   const handleSend = () => {
@@ -564,6 +581,27 @@ export default function ChatInput({
     return `${mins.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
   };
 
+  if (isSendBlocked) {
+    return (
+      <ChatInputContainer>
+        <Box
+          sx={{
+            py: 1.5,
+            px: 2,
+            textAlign: "center",
+            bgcolor: "#F3F4F6",
+            borderRadius: 2,
+            color: "#6B7280",
+            fontSize: 13,
+            fontWeight: 500,
+          }}
+        >
+          Chỉ quản trị viên mới có quyền gửi tin nhắn trong nhóm này.
+        </Box>
+      </ChatInputContainer>
+    );
+  }
+
   return (
     <ChatInputContainer
       onDragOver={handleDragOver}
@@ -698,6 +736,30 @@ export default function ChatInput({
                 <AttachFileRoundedIcon fontSize="small" />
               </IconBtn>
             </Tooltip>
+
+            {isGroupConv && onOpenCreatePoll && (
+              <Tooltip title="Tạo bình chọn" placement="top">
+                <IconBtn
+                  onClick={onOpenCreatePoll}
+                  disabled={disabled || uploading}
+                  aria-label="create-poll"
+                >
+                  <PollOutlinedIcon fontSize="small" />
+                </IconBtn>
+              </Tooltip>
+            )}
+
+            {onOpenShareContact && (
+              <Tooltip title="Gửi danh thiếp" placement="top">
+                <IconBtn
+                  onClick={onOpenShareContact}
+                  disabled={disabled || uploading}
+                  aria-label="share-contact"
+                >
+                  <ContactPageOutlinedIcon fontSize="small" />
+                </IconBtn>
+              </Tooltip>
+            )}
 
             {uploading && <CircularProgress size={16} sx={{ mx: 1 }} />}
 

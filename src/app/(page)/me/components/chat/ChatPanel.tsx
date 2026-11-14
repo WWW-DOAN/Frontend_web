@@ -1,12 +1,20 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { Box } from "@mui/material";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } from "react";
+import { Box, Typography, Collapse, IconButton } from "@mui/material";
 import { styled } from "@mui/material/styles";
+import PollOutlinedIcon from "@mui/icons-material/PollOutlined";
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
+import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 
 import ChatHeader from "./ChatHeader";
 import MessageList from "./MessageList";
 import ChatInput from "./ChatInput";
+import PollItem from "./PollItem";
+import CreatePollModal from "./CreatePollModal";
+import ShareContactModal from "./ShareContactModal";
+import { chatService } from "@/src/common/service/chat-service";
+import { ConversationPoll } from "@/src/common/interface/conversation-interface";
 import { useChatStore } from "@/src/common/store/useChatStore";
 import {
   deleteMessage,
@@ -100,14 +108,61 @@ export default function ChatPanel({
     mediaList: [],
     initialIndex: 0,
   });
+
+  const [polls, setPolls] = useState<ConversationPoll[]>([]);
+  const [showPollsList, setShowPollsList] = useState(false);
+  const [showCreatePollModal, setShowCreatePollModal] = useState(false);
+  const [showShareContactModal, setShowShareContactModal] = useState(false);
+
   const {
     socketConnected,
     messagesByConversation,
     paginationByConversation,
     pinnedMessagesByConversation,
     typingUsersByConversation,
+    listConversation,
     error,
   } = useChatStore();
+
+  const conversation = useMemo(
+    () => listConversation.find((c) => c.id === conversationId),
+    [listConversation, conversationId]
+  );
+  const isGroup = conversation?.type === "group" || conversation?.type === "GROUP";
+
+  const fetchPolls = useCallback(async () => {
+    if (!conversationId) return;
+    try {
+      const res = await chatService.getPolls(conversationId);
+      const list = res?.data?.data || res?.data || [];
+      setPolls(Array.isArray(list) ? list : []);
+    } catch {
+      // silently ignore
+    }
+  }, [conversationId]);
+
+  useEffect(() => {
+    if (isGroup) {
+      fetchPolls();
+    } else {
+      setPolls([]);
+      setShowPollsList(false);
+    }
+  }, [conversationId, isGroup, fetchPolls]);
+
+  const handleShareContact = (contact: { userId: string; displayName: string; avatarUrl?: string; phone?: string }) => {
+    const contactAttachment: ChatAttachmentPayload = {
+      key: contact.userId,
+      name: contact.displayName,
+      url: contact.avatarUrl,
+      size: contact.phone ? Number(contact.phone.replace(/\D/g, "")) : 0,
+      type: "contact",
+      contentType: "application/contact",
+      content_type: "application/contact",
+      visibility: "public",
+    };
+    sendMessage(conversationId, `[Danh thiếp] ${contact.displayName}`, [contactAttachment]);
+  };
 
   const messages = useMemo(
     () => messagesByConversation[conversationId] || [],
@@ -321,6 +376,47 @@ export default function ChatPanel({
         />
       )}
 
+      {isGroup && polls.length > 0 && (
+        <Box sx={{ borderBottom: "1px solid #E5E7EB", bgcolor: "#F8FAFC" }}>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              px: 2,
+              py: 1,
+              cursor: "pointer",
+              "&:hover": { bgcolor: "#F1F5F9" },
+            }}
+            onClick={() => setShowPollsList((prev) => !prev)}
+          >
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <PollOutlinedIcon sx={{ fontSize: 18, color: "#005AE0" }} />
+              <Typography sx={{ fontSize: 13, fontWeight: 600, color: "#1E293B" }}>
+                Bình chọn nhóm ({polls.filter((p) => p.status === "OPEN").length} đang mở)
+              </Typography>
+            </Box>
+            <IconButton size="small">
+              {showPollsList ? <KeyboardArrowUpIcon fontSize="small" /> : <KeyboardArrowDownIcon fontSize="small" />}
+            </IconButton>
+          </Box>
+          <Collapse in={showPollsList}>
+            <Box sx={{ px: 2, pb: 2, maxHeight: 320, overflowY: "auto" }}>
+              {polls.map((poll) => (
+                <PollItem
+                  key={poll.id}
+                  poll={poll}
+                  conversationId={conversationId}
+                  onVote={fetchPolls}
+                  onWithdraw={fetchPolls}
+                  onClose={fetchPolls}
+                />
+              ))}
+            </Box>
+          </Collapse>
+        </Box>
+      )}
+
       <MessageListWrap>
         <MessageList
           listRef={listRef}
@@ -372,6 +468,9 @@ export default function ChatPanel({
         <ChatInput
           disabled={false}
           conversationId={conversationId}
+          isGroup={isGroup}
+          onOpenCreatePoll={() => setShowCreatePollModal(true)}
+          onOpenShareContact={() => setShowShareContactModal(true)}
           onSend={(text, attachments) => {
             const replyMsg = messages.find((m) => m.messageId === replyMessageId);
             sendMessage(conversationId, text, attachments, replyMsg);
@@ -390,6 +489,19 @@ export default function ChatPanel({
           conversationId={forwardTarget.conversationId}
         />
       )}
+
+      <CreatePollModal
+        open={showCreatePollModal}
+        conversationId={conversationId}
+        onClose={() => setShowCreatePollModal(false)}
+        onCreated={fetchPolls}
+      />
+
+      <ShareContactModal
+        open={showShareContactModal}
+        onClose={() => setShowShareContactModal(false)}
+        onShare={handleShareContact}
+      />
 
       <MediaPreviewModal
         open={mediaPreview.open}

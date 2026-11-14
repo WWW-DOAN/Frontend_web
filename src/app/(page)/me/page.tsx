@@ -246,6 +246,7 @@ const Me = () => {
   const [selectedCategories, setSelectedCategories] = useState<FilterCategoryKey[]>([]);
   const [showSearchSidebar, setShowSearchSidebar] = useState(false);
   const [rightPanelMode, setRightPanelMode] = useState<"info" | "search">("info");
+  const [showRightPanel, setShowRightPanel] = useState(true);
   const [showAddFriendModal, setShowAddFriendModal] = useState(false);
   const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
   const [showFriendRequestModal, setShowFriendRequestModal] = useState(false);
@@ -491,38 +492,52 @@ const Me = () => {
                       currentUserId={currentUserId}
                       conversationId={activeConversationId}
                       title={t("ME.MESSAGES")}
-                      onToggleSearch={() =>
-                        setRightPanelMode((prev) => (prev === "search" ? "info" : "search"))
-                      }
-                      onToggleInfo={() => setRightPanelMode("info")}
-                    />
-                  </Box>
-
-                  {rightPanelMode === "search" ? (
-                    <SearchSidebar
-                      conversationId={activeConversationId}
-                      onClose={() => setRightPanelMode("info")}
-                      onMessageClick={(message) => {
-                        const id = `msg-${message.messageId}`;
-                        const el = document.getElementById(id);
-                        if (el) {
-                          el.scrollIntoView({ behavior: "smooth", block: "center" });
-                          setTimeout(() => {
-                            el.style.transition = "background-color 0.3s ease, border-color 0.3s ease";
-                            el.style.backgroundColor = "#FFF3CD";
-                            el.style.borderRadius = "8px";
-                            el.style.outline = "2px solid #FCD34D";
-                            setTimeout(() => {
-                              el.style.backgroundColor = "";
-                              el.style.outline = "";
-                              el.style.borderRadius = "";
-                            }, 2000);
-                          }, 500);
+                      onToggleSearch={() => {
+                        if (showRightPanel && rightPanelMode === "search") {
+                          setShowRightPanel(false);
+                        } else {
+                          setShowRightPanel(true);
+                          setRightPanelMode("search");
+                        }
+                      }}
+                      onToggleInfo={() => {
+                        if (showRightPanel && rightPanelMode === "info") {
+                          setShowRightPanel(false);
+                        } else {
+                          setShowRightPanel(true);
+                          setRightPanelMode("info");
                         }
                       }}
                     />
-                  ) : (
-                    <InfConvColumn conversationId={activeConversationId} />
+                  </Box>
+
+                  {showRightPanel && (
+                    rightPanelMode === "search" ? (
+                      <SearchSidebar
+                        conversationId={activeConversationId}
+                        onClose={() => setShowRightPanel(false)}
+                        onMessageClick={(message) => {
+                          const id = `msg-${message.messageId}`;
+                          const el = document.getElementById(id);
+                          if (el) {
+                            el.scrollIntoView({ behavior: "smooth", block: "center" });
+                            setTimeout(() => {
+                              el.style.transition = "background-color 0.3s ease, border-color 0.3s ease";
+                              el.style.backgroundColor = "#FFF3CD";
+                              el.style.borderRadius = "8px";
+                              el.style.outline = "2px solid #FCD34D";
+                              setTimeout(() => {
+                                el.style.backgroundColor = "";
+                                el.style.outline = "";
+                                el.style.borderRadius = "";
+                              }, 2000);
+                            }, 500);
+                          }
+                        }}
+                      />
+                    ) : (
+                      <InfConvColumn conversationId={activeConversationId} onClose={() => setShowRightPanel(false)} />
+                    )
                   )}
                 </Box>
               )

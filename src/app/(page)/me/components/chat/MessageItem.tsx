@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import {
   Avatar,
   Box,
+  Button,
   Chip,
   ClickAwayListener,
   Dialog,
@@ -29,6 +30,8 @@ import { styled, alpha, keyframes } from "@mui/material/styles";
 import { getReplyPreview } from "@/src/common/helpers/displayPreviewReply";
 import type { ReactionDto } from "@/src/common/interface/chat-interface";
 import { useChatStore } from "@/src/common/store/useChatStore";
+import { chatService } from "@/src/common/service/chat-service";
+import { resolveMediaUrl } from "@/src/common/helpers/displayMedia.helpers";
 
 import InsertDriveFileOutlinedIcon from "@mui/icons-material/InsertDriveFileOutlined";
 import ReplyOutlinedIcon from "@mui/icons-material/ReplyOutlined";
@@ -90,6 +93,7 @@ interface MessageItemProps {
   onPin?: () => void;
   onUnpin?: () => void;
   onDelete?: () => void;
+  onDeleteForMe?: () => void;
   onEdit?: (newContent: string) => void;
   onReact?: (emoji: string) => void;
   onImageClick?: (url: string, mediaList: Attachment[], index: number) => void;
@@ -641,6 +645,7 @@ const MessageItem: React.FC<MessageItemProps> = ({
   onPin,
   onUnpin,
   onDelete,
+  onDeleteForMe,
   onEdit,
   onReact,
   onImageClick,
@@ -768,6 +773,12 @@ const MessageItem: React.FC<MessageItemProps> = ({
     return type === 'audio' || contentType.startsWith('audio/') || /\.(webm|mp3|wav|ogg|m4a)$/i.test(a.url || a.name || '');
   });
 
+  const contactAttachments = attachments.filter((a) => {
+    const type = a.type?.toLowerCase();
+    const contentType = (a.contentType || a.content_type || '').toLowerCase();
+    return type === 'contact' || contentType === 'application/contact';
+  });
+
   const mediaAttachments = attachments.filter((a) => {
     const type = a.type?.toLowerCase();
     const contentType = (a.contentType || a.content_type || '').toLowerCase();
@@ -780,7 +791,7 @@ const MessageItem: React.FC<MessageItemProps> = ({
     const contentType = (a.contentType || a.content_type || '').toLowerCase();
     const isFile = type === 'document' || type === 'file' ||
       (!contentType.startsWith('image/') && !contentType.startsWith('video/') && !contentType.startsWith('audio/'));
-    return isFile && !mediaAttachments.includes(a) && !audioAttachments.includes(a);
+    return isFile && !mediaAttachments.includes(a) && !audioAttachments.includes(a) && !contactAttachments.includes(a);
   });
 
   const linkUrls = content.match(/(https?:\/\/[^\s]+)/g) || [];
@@ -1180,6 +1191,71 @@ const MessageItem: React.FC<MessageItemProps> = ({
                 </Box>
               )}
 
+              {contactAttachments.length > 0 && (
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 1, mt: content || mediaAttachments.length > 0 || fileAttachments.length > 0 ? 1 : 0 }}>
+                  {contactAttachments.map((att, index) => (
+                    <Box
+                      key={att.key || index}
+                      sx={{
+                        p: 1.5,
+                        bgcolor: "#FFFFFF",
+                        borderRadius: 2,
+                        border: "1px solid #D0E2FF",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 1.2,
+                        minWidth: 220,
+                        maxWidth: 280,
+                        boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+                      }}
+                    >
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                        <Avatar src={resolveMediaUrl(att.url) || undefined} sx={{ width: 44, height: 44, bgcolor: "#005AE0" }}>
+                          {(att.name || "?")[0]?.toUpperCase()}
+                        </Avatar>
+                        <Box sx={{ overflow: "hidden", flex: 1 }}>
+                          <Typography sx={{ fontWeight: 600, fontSize: 14, color: "#111827", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>
+                            {att.name}
+                          </Typography>
+                          <Typography sx={{ fontSize: 12, color: "#6B7280" }}>
+                            {att.size ? `SĐT: ${att.size}` : "Danh thiếp Zalo"}
+                          </Typography>
+                        </Box>
+                      </Box>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        fullWidth
+                        sx={{
+                          textTransform: "none",
+                          fontSize: 13,
+                          borderRadius: 1.5,
+                          borderColor: "#005AE0",
+                          color: "#005AE0",
+                          "&:hover": { bgcolor: "#F0F7FF", borderColor: "#005AE0" },
+                        }}
+                        onClick={async () => {
+                          const targetUserId = att.key;
+                          if (targetUserId) {
+                            try {
+                              const res: any = await chatService.createDirectConversation({ participantId: targetUserId });
+                              const newId = res?.payload?.data?.id || res?.data?.data?.id || res?.data?.id;
+                              if (newId) {
+                                useChatStore.getState().setActiveConversationId(newId);
+                              }
+                            } catch (e) {
+                              console.error("Open direct chat error:", e);
+                            }
+                          }
+                        }}
+                      >
+                        Nhắn tin
+                      </Button>
+                    </Box>
+                  ))}
+                </Box>
+              )}
+
               {linkUrls.length > 0 && (
                 <Box sx={{ display: "flex", flexDirection: "column", gap: 1, mt: content || mediaAttachments.length > 0 || fileAttachments.length > 0 ? 1 : 0 }}>
                   {linkUrls.map((url, index) => (
@@ -1313,7 +1389,7 @@ const MessageItem: React.FC<MessageItemProps> = ({
             ) : null,
             onDelete && isOwn ? (
               <MenuItem
-                key="delete"
+                key="recall"
                 sx={{
                   color: "#EF4444",
                 }}
@@ -1325,7 +1401,24 @@ const MessageItem: React.FC<MessageItemProps> = ({
                 <DeleteOutlineOutlinedIcon
                   sx={{ mr: 1.2, fontSize: 18 }}
                 />
-                {t("CHAT.ACTION_DELETE")}
+                Thu hồi
+              </MenuItem>
+            ) : null,
+            onDeleteForMe ? (
+              <MenuItem
+                key="deleteForMe"
+                sx={{
+                  color: "#6B7280",
+                }}
+                onClick={() => {
+                  setAnchorEl(null);
+                  onDeleteForMe();
+                }}
+              >
+                <DeleteOutlineOutlinedIcon
+                  sx={{ mr: 1.2, fontSize: 18 }}
+                />
+                Xóa chỉ ở phía tôi
               </MenuItem>
             ) : null,
           ]}

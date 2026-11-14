@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { Box, IconButton, Typography } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import { toast } from "react-toastify";
 
 import { useChatStore } from "@/src/common/store/useChatStore";
@@ -23,9 +24,11 @@ import ProfileCard from "./ProfileCard";
 import SecuritySection from "./SecuritySection";
 import GroupMemberListView from "./GroupMemberListView";
 import AddMemberGroupDialog from "./AddMemberGroupDialog";
+import GroupSettingsDialog from "./GroupSettingsDialog";
 
 interface InfConvColumnProps {
   conversationId: string;
+  onClose?: () => void;
 }
 
 const EMPTY_ATTACHMENTS: AttachmentDto[] = [];
@@ -59,7 +62,7 @@ const HeaderTitle = styled(Typography)({
   color: "#0F172A",
 });
 
-export default function InfConvColumn({ conversationId }: InfConvColumnProps) {
+export default function InfConvColumn({ conversationId, onClose }: InfConvColumnProps) {
   const t = useTrans();
   const [mounted, setMounted] = useState(false);
   const [showAddMember, setShowAddMember] = useState(false);
@@ -70,6 +73,7 @@ export default function InfConvColumn({ conversationId }: InfConvColumnProps) {
   });
   const [friends, setFriends] = useState<Array<{ id: string; name: string; avatar?: string; phone?: string }>>([]);
   const [memberSearch, setMemberSearch] = useState("");
+  const [showGroupSettings, setShowGroupSettings] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -161,7 +165,11 @@ export default function InfConvColumn({ conversationId }: InfConvColumnProps) {
   };
 
   const handleClose = () => {
-    setActiveConversationId(null);
+    if (onClose) {
+      onClose();
+    } else {
+      setActiveConversationId(null);
+    }
   };
 
   const handlePromoteToAdmin = async (memberId: string) => {
@@ -247,6 +255,45 @@ export default function InfConvColumn({ conversationId }: InfConvColumnProps) {
           onTransferOwnership={handleTransferOwnership}
           canManageMembers={isAdmin}
           canPromote={isOwner}
+        />
+      )}
+
+      {isGroup && isAdmin && (
+        <Box sx={{ px: 2, pb: 1 }}>
+          <Box
+            component="button"
+            onClick={() => setShowGroupSettings(true)}
+            sx={{
+              width: "100%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 1,
+              py: 1,
+              px: 2,
+              borderRadius: "8px",
+              bgcolor: "#fff",
+              border: "1px solid #E5E7EB",
+              color: "#374151",
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: "pointer",
+              transition: "all 0.2s",
+              "&:hover": { bgcolor: "#F9FAFB", borderColor: "#D1D5DB" },
+            }}
+          >
+            <SettingsOutlinedIcon sx={{ fontSize: 18 }} />
+            Quản trị & Cài đặt nhóm
+          </Box>
+        </Box>
+      )}
+
+      {isGroup && (
+        <GroupSettingsDialog
+          open={showGroupSettings}
+          conversationId={conversationId}
+          onClose={() => setShowGroupSettings(false)}
+          isAdmin={isAdmin}
         />
       )}
 

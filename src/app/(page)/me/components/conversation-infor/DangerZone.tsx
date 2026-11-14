@@ -135,7 +135,7 @@ interface DangerZoneProps {
 
 export default function DangerZone({ conversationId }: DangerZoneProps) {
   const t = useTrans();
-  const [confirmAction, setConfirmAction] = useState<"leave" | "disband" | "leave-owner" | null>(null);
+  const [confirmAction, setConfirmAction] = useState<"leave" | "disband" | "leave-owner" | "clear-history" | null>(null);
 
   const listConversation = useChatStore((s) => s.listConversation);
   const activeConversationId = useChatStore((s) => s.activeConversationId);
@@ -178,6 +178,17 @@ export default function DangerZone({ conversationId }: DangerZoneProps) {
     } finally {
       setConfirmAction(null);
     }
+  };
+
+  const handleClearHistory = () => {
+    useChatStore.setState((prev) => ({
+      messagesByConversation: {
+        ...prev.messagesByConversation,
+        [conversationId]: [],
+      },
+    }));
+    toast.success("Đã xóa lịch sử trò chuyện trên máy này");
+    setConfirmAction(null);
   };
 
   const handleLeaveClick = () => {
@@ -232,11 +243,24 @@ export default function DangerZone({ conversationId }: DangerZoneProps) {
 
         <Divider sx={{ mx: 0 }} />
 
-        <DangerRow danger>
+        <DangerRow danger onClick={() => setConfirmAction("clear-history")}>
           <DeleteOutlineRoundedIcon sx={{ fontSize: 20 }} />
           <ActionText>{t("DANGER.DELETE_HISTORY")}</ActionText>
         </DangerRow>
       </Card>
+
+      <StyledDialog open={confirmAction === "clear-history"} onClose={() => setConfirmAction(null)}>
+        <DialogTitleStyled>{t("DANGER.DELETE_HISTORY") || "Xóa lịch sử trò chuyện"}</DialogTitleStyled>
+        <DialogContentStyled>
+          <Typography>
+            Toàn bộ tin nhắn trong cuộc trò chuyện này sẽ bị xóa khỏi thiết bị của bạn. Hành động này không thể hoàn tác.
+          </Typography>
+        </DialogContentStyled>
+        <DialogActionsStyled>
+          <CancelButton onClick={() => setConfirmAction(null)}>{t("CONVO.CANCEL") || "Hủy"}</CancelButton>
+          <DangerButton onClick={handleClearHistory}>{t("DANGER.DELETE_HISTORY") || "Xóa lịch sử"}</DangerButton>
+        </DialogActionsStyled>
+      </StyledDialog>
 
       <StyledDialog open={confirmAction === "leave"} onClose={() => setConfirmAction(null)}>
         <DialogTitleStyled>{t("DANGER.LEAVE_GROUP")}</DialogTitleStyled>

@@ -470,6 +470,10 @@ export const chatService = {
     return http.post(API.API_CONVERSATIONS_INVITES_CANCEL(conversationId, inviteId));
   },
 
+  getPolls(conversationId: string) {
+    return http.get<IApiResponse<any>>(API.API_CONVERSATIONS_POLLS_LIST(conversationId));
+  },
+
   createPoll(conversationId: string, body: CreatePollRequest) {
     return http.post(API.API_CONVERSATIONS_POLLS_CREATE(conversationId), body);
   },

@@ -5,7 +5,7 @@ import { styled } from "@mui/material/styles";
 import { useMemo } from "react";
 import { PaginationState, UiMessage, AttachmentDto } from "@/src/common/interface/chat-interface";
 import { useChatStore } from "@/src/common/store/useChatStore";
-import { pinMessage, toggleReaction, unpinMessage } from "@/src/common/action/chat.action";
+import { pinMessage, toggleReaction, unpinMessage, deleteMessageForMe } from "@/src/common/action/chat.action";
 import { resolveMediaUrl } from "@/src/common/helpers/displayMedia.helpers";
 import MessageItem from "./MessageItem";
 import SystemMessageBanner from "./message-system/SystemMessageBanner";
@@ -245,6 +245,7 @@ export default function MessageList({
                   onReact={(emoji) => toggleReaction(conversationId, msg.messageId, msg.createdAt, emoji)}
                   onImageClick={(url, mediaList, index) => onImageClick?.(url, (mediaList || msg.attachments) as AttachmentDto[], index || 0)}
                   onDelete={() => onDeleteMessage(conversationId, msg.messageId)}
+                  onDeleteForMe={() => deleteMessageForMe(conversationId, msg.messageId)}
                 />
               </Box>
             );
