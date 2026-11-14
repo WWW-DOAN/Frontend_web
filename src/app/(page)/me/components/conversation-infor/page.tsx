@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { Box, IconButton, Typography } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
@@ -26,10 +26,17 @@ import GroupMemberListView from "./GroupMemberListView";
 import AddMemberGroupDialog from "./AddMemberGroupDialog";
 import GroupSettingsDialog from "./GroupSettingsDialog";
 import InviteLinkModal from "./InviteLinkModal";
+import GroupBoardSection from "./GroupBoardSection";
 
 interface InfConvColumnProps {
   conversationId: string;
   onClose?: () => void;
+  onOpenCreatePoll?: () => void;
+  onOpenCreateNote?: () => void;
+  onOpenCreateReminder?: () => void;
+  onOpenCreateTodo?: () => void;
+  onViewPinned?: () => void;
+  onViewPolls?: () => void;
 }
 
 const EMPTY_ATTACHMENTS: AttachmentDto[] = [];
@@ -63,7 +70,16 @@ const HeaderTitle = styled(Typography)({
   color: "#0F172A",
 });
 
-export default function InfConvColumn({ conversationId, onClose }: InfConvColumnProps) {
+export default function InfConvColumn({
+  conversationId,
+  onClose,
+  onOpenCreatePoll,
+  onOpenCreateNote,
+  onOpenCreateReminder,
+  onOpenCreateTodo,
+  onViewPinned,
+  onViewPolls,
+}: InfConvColumnProps) {
   const t = useTrans();
   const [mounted, setMounted] = useState(false);
   const [showAddMember, setShowAddMember] = useState(false);
@@ -76,6 +92,7 @@ export default function InfConvColumn({ conversationId, onClose }: InfConvColumn
   const [memberSearch, setMemberSearch] = useState("");
   const [showGroupSettings, setShowGroupSettings] = useState(false);
   const [showInviteLink, setShowInviteLink] = useState(false);
+  const [pollsCount, setPollsCount] = useState(0);
 
   useEffect(() => {
     setMounted(true);
@@ -107,6 +124,76 @@ export default function InfConvColumn({ conversationId, onClose }: InfConvColumn
   const links = useChatStore(
     (state) => state.linksByConversation?.[conversationId] ?? EMPTY_LINKS
   );
+
+  const pinnedMessages = useChatStore(
+    (state) => state.pinnedMessagesByConversation?.[conversationId] ?? []
+  );
+
+  const messages = useChatStore(
+    (state) => state.messagesByConversation?.[conversationId] ?? []
+  );
+
+  const remindersCount = useMemo(() => {
+    return messages.filter((m) =>
+      m.attachments?.some((a: any) => a.type === "reminder")
+    ).length;
+  }, [messages]);
+
+  const notesCount = useMemo(() => {
+    return messages.filter((m) =>
+      m.attachments?.some((a: any) => a.type === "note")
+    ).length;
+  }, [messages]);
+
+  const todosCount = useMemo(() => {
+    return messages.filter((m) =>
+      m.attachments?.some((a: any) => a.type === "todo")
+    ).length;
+  }, [messages]);
+
+  useEffect(() => {
+    if (isGroup && conversationId) {
+      chatService
+        .getPolls(conversationId)
+        .then((res: any) => {
+          const list = res?.payload?.data || res?.data || res || [];
+          if (Array.isArray(list)) {
+            setPollsCount(list.length);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [conversationId, isGroup]);
+
+  const handleOpenPoll = () => {
+    if (onOpenCreatePoll) onOpenCreatePoll();
+    else window.dispatchEvent(new CustomEvent("chat:open_modal", { detail: "poll" }));
+  };
+
+  const handleOpenNote = () => {
+    if (onOpenCreateNote) onOpenCreateNote();
+    else window.dispatchEvent(new CustomEvent("chat:open_modal", { detail: "note" }));
+  };
+
+  const handleOpenReminder = () => {
+    if (onOpenCreateReminder) onOpenCreateReminder();
+    else window.dispatchEvent(new CustomEvent("chat:open_modal", { detail: "reminder" }));
+  };
+
+  const handleOpenTodo = () => {
+    if (onOpenCreateTodo) onOpenCreateTodo();
+    else window.dispatchEvent(new CustomEvent("chat:open_modal", { detail: "todo" }));
+  };
+
+  const handleViewPinned = () => {
+    if (onViewPinned) onViewPinned();
+    else window.dispatchEvent(new CustomEvent("chat:scroll_to_pinned"));
+  };
+
+  const handleViewPolls = () => {
+    if (onViewPolls) onViewPolls();
+    else window.dispatchEvent(new CustomEvent("chat:open_modal", { detail: "view_polls" }));
+  };
 
   const refresh = () => fetchListConversation({ page: 1, limit: 20 });
 
@@ -237,6 +324,22 @@ export default function InfConvColumn({ conversationId, onClose }: InfConvColumn
 
       <ProfileCard onAddMember={isGroup ? handleOpenAddMember : undefined} />
       <OverviewCard />
+
+      {isGroup && (
+        <GroupBoardSection
+          pinnedCount={pinnedMessages.length}
+          pollsCount={pollsCount}
+          notesCount={notesCount}
+          remindersCount={remindersCount}
+          todosCount={todosCount}
+          onOpenCreatePoll={handleOpenPoll}
+          onOpenCreateNote={handleOpenNote}
+          onOpenCreateReminder={handleOpenReminder}
+          onOpenCreateTodo={handleOpenTodo}
+          onViewPinned={handleViewPinned}
+          onViewPolls={handleViewPolls}
+        />
+      )}
 
       {isGroup && (
         (conversation?.settings?.policies as any)?.hideMemberList && !isAdmin ? (

@@ -15,6 +15,9 @@ import {
   ListItemText,
   Avatar,
   Typography,
+  Menu,
+  MenuItem,
+  ListItemIcon,
 } from "@mui/material";
 import { sendTyping, sendStopTyping } from "@/src/common/action/chat.action";
 import { styled, keyframes } from "@mui/material/styles";
@@ -30,6 +33,7 @@ import LocationOnOutlinedIcon from "@mui/icons-material/LocationOnOutlined";
 import AlarmOutlinedIcon from "@mui/icons-material/AlarmOutlined";
 import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
 import AssignmentTurnedInOutlinedIcon from "@mui/icons-material/AssignmentTurnedInOutlined";
+import MoreHorizRoundedIcon from "@mui/icons-material/MoreHorizRounded";
 import dynamic from "next/dynamic";
 import InsertEmoticonRoundedIcon from "@mui/icons-material/InsertEmoticonRounded";
 import { EmojiClickData } from "emoji-picker-react";
@@ -229,6 +233,7 @@ export default function ChatInput({
 
   const [value, setValue] = useState("");
   const [openEmoji, setOpenEmoji] = useState(false);
+  const [utilitiesAnchor, setUtilitiesAnchor] = useState<null | HTMLElement>(null);
   const [pendingAttachments, setPendingAttachments] = useState<ChatAttachmentPayload[]>([]);
   const [uploading, setUploading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -779,75 +784,131 @@ export default function ChatInput({
               </IconBtn>
             </Tooltip>
 
-            {isGroupConv && onOpenCreatePoll && (
-              <Tooltip title="Tạo bình chọn" placement="top">
-                <IconBtn
-                  onClick={onOpenCreatePoll}
-                  disabled={disabled || uploading}
-                  aria-label="create-poll"
-                >
-                  <PollOutlinedIcon fontSize="small" />
-                </IconBtn>
-              </Tooltip>
-            )}
-
-            {isGroupConv && onOpenCreateReminder && (
-              <Tooltip title="Tạo nhắc hẹn" placement="top">
-                <IconBtn
-                  onClick={onOpenCreateReminder}
-                  disabled={disabled || uploading}
-                  aria-label="create-reminder"
-                >
-                  <AlarmOutlinedIcon fontSize="small" />
-                </IconBtn>
-              </Tooltip>
-            )}
-
-            {isGroupConv && onOpenCreateNote && (
-              <Tooltip title="Tạo ghi chú" placement="top">
-                <IconBtn
-                  onClick={onOpenCreateNote}
-                  disabled={disabled || uploading}
-                  aria-label="create-note"
-                >
-                  <DescriptionOutlinedIcon fontSize="small" />
-                </IconBtn>
-              </Tooltip>
-            )}
-
-            {isGroupConv && onOpenCreateTodo && (
-              <Tooltip title="Giao việc (To-Do)" placement="top">
-                <IconBtn
-                  onClick={onOpenCreateTodo}
-                  disabled={disabled || uploading}
-                  aria-label="create-todo"
-                >
-                  <AssignmentTurnedInOutlinedIcon fontSize="small" />
-                </IconBtn>
-              </Tooltip>
-            )}
-
-            {onOpenShareContact && (
-              <Tooltip title="Gửi danh thiếp" placement="top">
-                <IconBtn
-                  onClick={onOpenShareContact}
-                  disabled={disabled || uploading}
-                  aria-label="share-contact"
-                >
-                  <ContactPageOutlinedIcon fontSize="small" />
-                </IconBtn>
-              </Tooltip>
-            )}
-
-            <Tooltip title="Chia sẻ vị trí" placement="top">
+            <Tooltip title="Thêm tiện ích" placement="top">
               <IconBtn
-                onClick={handleShareLocation}
+                onClick={(e) => setUtilitiesAnchor(e.currentTarget)}
                 disabled={disabled || uploading}
-                aria-label="share-location"
+                aria-label="more-utilities"
               >
-                <LocationOnOutlinedIcon fontSize="small" />
+                <MoreHorizRoundedIcon fontSize="small" />
               </IconBtn>
             </Tooltip>
+
+            <Menu
+              anchorEl={utilitiesAnchor}
+              open={Boolean(utilitiesAnchor)}
+              onClose={() => setUtilitiesAnchor(null)}
+              anchorOrigin={{ vertical: "top", horizontal: "left" }}
+              transformOrigin={{ vertical: "bottom", horizontal: "left" }}
+              PaperProps={{
+                sx: {
+                  borderRadius: "10px",
+                  minWidth: 210,
+                  boxShadow: "0 6px 20px rgba(0,0,0,0.12)",
+                  py: 0.5,
+                },
+              }}
+            >
+              {isGroupConv && onOpenCreatePoll && (
+                <MenuItem
+                  onClick={() => {
+                    setUtilitiesAnchor(null);
+                    onOpenCreatePoll();
+                  }}
+                >
+                  <ListItemIcon>
+                    <PollOutlinedIcon fontSize="small" sx={{ color: "#0068FF" }} />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary="Tạo bình chọn"
+                    primaryTypographyProps={{ fontSize: 13, fontWeight: 500 }}
+                  />
+                </MenuItem>
+              )}
+
+              {isGroupConv && onOpenCreateReminder && (
+                <MenuItem
+                  onClick={() => {
+                    setUtilitiesAnchor(null);
+                    onOpenCreateReminder();
+                  }}
+                >
+                  <ListItemIcon>
+                    <AlarmOutlinedIcon fontSize="small" sx={{ color: "#D97706" }} />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary="Tạo nhắc hẹn"
+                    primaryTypographyProps={{ fontSize: 13, fontWeight: 500 }}
+                  />
+                </MenuItem>
+              )}
+
+              {isGroupConv && onOpenCreateNote && (
+                <MenuItem
+                  onClick={() => {
+                    setUtilitiesAnchor(null);
+                    onOpenCreateNote();
+                  }}
+                >
+                  <ListItemIcon>
+                    <DescriptionOutlinedIcon fontSize="small" sx={{ color: "#2563EB" }} />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary="Tạo ghi chú"
+                    primaryTypographyProps={{ fontSize: 13, fontWeight: 500 }}
+                  />
+                </MenuItem>
+              )}
+
+              {isGroupConv && onOpenCreateTodo && (
+                <MenuItem
+                  onClick={() => {
+                    setUtilitiesAnchor(null);
+                    onOpenCreateTodo();
+                  }}
+                >
+                  <ListItemIcon>
+                    <AssignmentTurnedInOutlinedIcon fontSize="small" sx={{ color: "#7C3AED" }} />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary="Giao việc (To-Do)"
+                    primaryTypographyProps={{ fontSize: 13, fontWeight: 500 }}
+                  />
+                </MenuItem>
+              )}
+
+              {onOpenShareContact && (
+                <MenuItem
+                  onClick={() => {
+                    setUtilitiesAnchor(null);
+                    onOpenShareContact();
+                  }}
+                >
+                  <ListItemIcon>
+                    <ContactPageOutlinedIcon fontSize="small" sx={{ color: "#059669" }} />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary="Gửi danh thiếp"
+                    primaryTypographyProps={{ fontSize: 13, fontWeight: 500 }}
+                  />
+                </MenuItem>
+              )}
+
+              <MenuItem
+                onClick={() => {
+                  setUtilitiesAnchor(null);
+                  handleShareLocation();
+                }}
+              >
+                <ListItemIcon>
+                  <LocationOnOutlinedIcon fontSize="small" sx={{ color: "#EA580C" }} />
+                </ListItemIcon>
+                <ListItemText
+                  primary="Chia sẻ vị trí"
+                  primaryTypographyProps={{ fontSize: 13, fontWeight: 500 }}
+                />
+              </MenuItem>
+            </Menu>
 
             {uploading && <CircularProgress size={16} sx={{ mx: 1 }} />}
 

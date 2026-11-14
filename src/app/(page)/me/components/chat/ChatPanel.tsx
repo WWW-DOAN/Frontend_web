@@ -159,6 +159,20 @@ export default function ChatPanel({
     }
   }, [conversationId, isGroup, fetchPolls]);
 
+  useEffect(() => {
+    const handleOpenModal = (e: Event) => {
+      const modalType = (e as CustomEvent).detail;
+      if (modalType === "poll") setShowCreatePollModal(true);
+      else if (modalType === "note") setShowCreateNoteModal(true);
+      else if (modalType === "reminder") setShowCreateReminderModal(true);
+      else if (modalType === "todo") setShowCreateTodoModal(true);
+      else if (modalType === "contact") setShowShareContactModal(true);
+      else if (modalType === "view_polls") setShowPollsList(true);
+    };
+    window.addEventListener("chat:open_modal", handleOpenModal);
+    return () => window.removeEventListener("chat:open_modal", handleOpenModal);
+  }, []);
+
   const handleShareContact = (contact: { userId: string; displayName: string; avatarUrl?: string; phone?: string }) => {
     const contactAttachment: ChatAttachmentPayload = {
       key: contact.userId,
@@ -186,6 +200,24 @@ export default function ChatPanel({
     () => pinnedMessagesByConversation[conversationId] || [],
     [pinnedMessagesByConversation, conversationId]
   );
+
+  useEffect(() => {
+    const handleScrollPinned = () => {
+      if (pinnedMessages.length > 0) {
+        const firstPinned = pinnedMessages[0];
+        const el = document.getElementById(`msg-${firstPinned.messageId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+          el.style.backgroundColor = "#FEF3C7";
+          setTimeout(() => {
+            el.style.backgroundColor = "";
+          }, 2000);
+        }
+      }
+    };
+    window.addEventListener("chat:scroll_to_pinned", handleScrollPinned);
+    return () => window.removeEventListener("chat:scroll_to_pinned", handleScrollPinned);
+  }, [pinnedMessages]);
 
   const firstMessageId = messages[0]?.messageId ?? null;
   const lastMessageId = messages[messages.length - 1]?.messageId ?? null;
