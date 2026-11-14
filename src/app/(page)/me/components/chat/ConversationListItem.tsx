@@ -160,20 +160,22 @@ function ConversationListItem({
       console.error("Pin/unpin conversation failed", error);
     }
   };
+  const onlineUserIds = useChatStore((s) => s.onlineUserIds);
   const isGroup = item.type === "group" || item.type === "GROUP";
 
   const otherMember = !isGroup
-    ? item.members?.find((m) => m.userId !== currentUserId)
+    ? item.members?.find((m: any) => (m.userId || m.id || m.user_id) !== currentUserId)
     : null;
+  const otherUserId = otherMember?.userId || (otherMember as any)?.id || (otherMember as any)?.user_id;
+  const isOnline = !isGroup && otherUserId ? onlineUserIds.includes(otherUserId) : false;
 
   const displayName = isGroup
     ? item.title
-    : otherMember?.nickname || otherMember?.fullName || item.title;
+    : otherMember?.nickname || otherMember?.fullName || otherMember?.displayName || item.title;
 
   const displaySrc = isGroup
     ? resolveMediaUrl(item.avatarUrl) || undefined
     : resolveMediaUrl(otherMember?.avatarUrl || item.avatarUrl) || undefined;
-
 
   return (
     <>
@@ -183,12 +185,29 @@ function ConversationListItem({
         onClick={() => onOpen(item.id)}
       >
         <ItemRow>
-          <AppAvatar
-            src={displaySrc}
-            name={displayName ?? null}
-            size={44}
-            isGroup={isGroup}
-          />
+          <Box sx={{ position: "relative", display: "inline-flex", flexShrink: 0 }}>
+            <AppAvatar
+              src={displaySrc}
+              name={displayName ?? null}
+              size={44}
+              isGroup={isGroup}
+            />
+            {isOnline && (
+              <Box
+                sx={{
+                  position: "absolute",
+                  bottom: 1,
+                  right: 1,
+                  width: 11,
+                  height: 11,
+                  borderRadius: "50%",
+                  bgcolor: "#22C55E",
+                  border: "2px solid #FFFFFF",
+                  boxShadow: "0 0 0 1px rgba(0,0,0,0.06)",
+                }}
+              />
+            )}
+          </Box>
 
           <Content>
             <Row>

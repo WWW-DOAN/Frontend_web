@@ -36,6 +36,24 @@ const _scheduleListSync = () => {
   }, 500);
 };
 
+let _presenceSyncTimer: any = null;
+
+export const syncOnlineUsers = async () => {
+  try {
+    const res = await http.get<{ success: boolean; data: string[] }>("/api/presence/online");
+    if (res?.ok && Array.isArray(res.payload?.data)) {
+      const currentUserId = useChatStore.getState().currentUserId;
+      const onlineSet = new Set(res.payload.data);
+      if (currentUserId && getSocket()?.connected) {
+        onlineSet.add(currentUserId);
+      }
+      useChatStore.getState().setOnlineUserIds(Array.from(onlineSet));
+    }
+  } catch (err) {
+    console.error("[syncOnlineUsers] failed:", err);
+  }
+};
+
 const MESSAGE_SEND_WINDOW_MS = 5 * 1000;
 const MESSAGE_SEND_MAX = 3;
 const messageSendTimestamps: number[] = [];
@@ -475,12 +493,17 @@ export const initChat = (accessToken: string, currentUserId: string) => {
   window.addEventListener('conversation:created', handleConversationCreated);
   window.addEventListener('conversation:removed', handleConversationRemoved);
 
-  // Load initial online users
-  http.get<{ success: boolean; data: string[] }>("/api/presence/online").then((res) => {
-    if (res?.ok && Array.isArray(res.payload?.data)) {
-      state.setOnlineUserIds(res.payload.data);
+  // Load initial online users & start sync
+  syncOnlineUsers();
+  if (_presenceSyncTimer) clearInterval(_presenceSyncTimer);
+  _presenceSyncTimer = setInterval(syncOnlineUsers, 15000);
+
+  const handleVisibilityChange = () => {
+    if (!document.hidden) {
+      syncOnlineUsers();
     }
-  }).catch(() => {});
+  };
+  document.addEventListener('visibilitychange', handleVisibilityChange);
 
   if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
     Notification.requestPermission().catch(() => {});
@@ -1117,6 +1140,10 @@ export const cleanupChat = () => {
   const socket = getSocket();
 
   if (_syncListTimer) clearTimeout(_syncListTimer);
+  if (_presenceSyncTimer) {
+    clearInterval(_presenceSyncTimer);
+    _presenceSyncTimer = null;
+  }
 
   disconnectSocket();
 
@@ -1250,14 +1277,14 @@ const handlePresenceUpdate = (event: any) => {
   const detail = event.detail;
   console.log('[presence:update] raw event detail:', JSON.stringify(detail));
   const userId = detail?.user_id ?? detail?.userId;
-  const rawEvent = detail?.event ?? detail?.status;
+  const rawEvent = String(detail?.event ?? detail?.status ?? '').toUpperCase();
   if (!userId || !rawEvent) {
     console.warn('[presence:update] missing userId or event', { userId, rawEvent, detail });
     return;
   }
 
-  const isOnline = rawEvent === 'USER_ONLINE' || rawEvent === 'online';
-  console.log('[presence:update]', userId, isOnline ? 'ONLINE' : 'OFFLINE', 'current onlineUserIds:', useChatStore.getState().onlineUserIds);
+  const isOnline = rawEvent === 'USER_ONLINE' || rawEvent === 'ONLINE';
+  console.log('[presence:update]', userId, isOnline ? 'ONLINE' : 'OFFLINE');
 
   usePresenceStore.getState().updatePresence(userId, {
     user_id: userId,
@@ -1266,14 +1293,13 @@ const handlePresenceUpdate = (event: any) => {
   });
 
   useChatStore.setState((state) => {
-    if (isOnline && !state.onlineUserIds.includes(userId)) {
-      console.log('[presence:update] adding to onlineUserIds:', userId);
-      return { onlineUserIds: [...state.onlineUserIds, userId] };
-    } else if (!isOnline && state.onlineUserIds.includes(userId)) {
-      console.log('[presence:update] removing from onlineUserIds:', userId);
-      return { onlineUserIds: state.onlineUserIds.filter(id => id !== userId) };
+    const set = new Set(state.onlineUserIds);
+    if (isOnline) {
+      set.add(userId);
+    } else {
+      set.delete(userId);
     }
-    return state;
+    return { onlineUserIds: Array.from(set) };
   });
 };
 
@@ -1286,6 +1312,7 @@ const handleSocketError = (event: any) => {
 
 const handleSocketConnect = () => {
   useChatStore.getState().setSocketConnected(true);
+  syncOnlineUsers();
 };
 
 const handleSocketDisconnect = (event: any) => {

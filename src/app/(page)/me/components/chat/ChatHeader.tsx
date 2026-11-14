@@ -116,16 +116,20 @@ export default function ChatHeader({
 }: ChatHeaderProps) {
   const isMobile = useMediaQuery('(max-width:767px)');
   const listConversation = useChatStore((s) => s.listConversation);
+  const conversationDetailById = useChatStore((s) => s.conversationDetailById);
   const onlineUserIds = useChatStore((s) => s.onlineUserIds);
   const currentUserId = useChatStore((s) => s.currentUserId);
-  const conversation = listConversation.find((item) => item.id === conversationId);
+  const convDetail = conversationId ? conversationDetailById[conversationId] : null;
+  const conversation = convDetail || listConversation.find((item) => item.id === conversationId);
   const t = useTrans();
 
   const isDirect = conversation?.type !== "group" && conversation?.type !== "GROUP" && conversation?.type !== undefined;
+  const members = conversation?.members || [];
   const otherMember = isDirect
-    ? conversation?.members?.find((m: any) => m.userId !== currentUserId)
+    ? members.find((m: any) => (m.userId || m.id || m.user_id) !== currentUserId)
     : null;
-  const isOtherOnline = otherMember ? onlineUserIds.includes(otherMember.userId) : false;
+  const otherUserId = otherMember?.userId || (otherMember as any)?.id || (otherMember as any)?.user_id;
+  const isOtherOnline = otherUserId ? onlineUserIds.includes(otherUserId) : false;
   const statusOnline = isDirect ? isOtherOnline : socketConnected;
 
   console.log('[ChatHeader]', {
