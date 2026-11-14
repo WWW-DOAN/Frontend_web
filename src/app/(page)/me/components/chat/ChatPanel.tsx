@@ -14,6 +14,9 @@ import PollItem from "./PollItem";
 import CreatePollModal from "./CreatePollModal";
 import EditPollModal from "./EditPollModal";
 import ShareContactModal from "./ShareContactModal";
+import CreateReminderModal from "./CreateReminderModal";
+import CreateNoteModal from "./CreateNoteModal";
+import CreateTodoModal from "./CreateTodoModal";
 import { chatService } from "@/src/common/service/chat-service";
 import { ConversationPoll } from "@/src/common/interface/conversation-interface";
 import { useChatStore } from "@/src/common/store/useChatStore";
@@ -115,6 +118,9 @@ export default function ChatPanel({
   const [showCreatePollModal, setShowCreatePollModal] = useState(false);
   const [editingPoll, setEditingPoll] = useState<ConversationPoll | null>(null);
   const [showShareContactModal, setShowShareContactModal] = useState(false);
+  const [showCreateReminderModal, setShowCreateReminderModal] = useState(false);
+  const [showCreateNoteModal, setShowCreateNoteModal] = useState(false);
+  const [showCreateTodoModal, setShowCreateTodoModal] = useState(false);
 
   const {
     socketConnected,
@@ -131,6 +137,7 @@ export default function ChatPanel({
     [listConversation, conversationId]
   );
   const isGroup = conversation?.type === "group" || conversation?.type === "GROUP";
+  const members = (conversation?.members || []) as any[];
 
   const fetchPolls = useCallback(async () => {
     if (!conversationId) return;
@@ -475,6 +482,9 @@ export default function ChatPanel({
           isGroup={isGroup}
           onOpenCreatePoll={() => setShowCreatePollModal(true)}
           onOpenShareContact={() => setShowShareContactModal(true)}
+          onOpenCreateReminder={() => setShowCreateReminderModal(true)}
+          onOpenCreateNote={() => setShowCreateNoteModal(true)}
+          onOpenCreateTodo={() => setShowCreateTodoModal(true)}
           onSend={(text, attachments) => {
             const replyMsg = messages.find((m) => m.messageId === replyMessageId);
             sendMessage(conversationId, text, attachments, replyMsg);
@@ -513,6 +523,31 @@ export default function ChatPanel({
         open={showShareContactModal}
         onClose={() => setShowShareContactModal(false)}
         onShare={handleShareContact}
+      />
+
+      <CreateReminderModal
+        open={showCreateReminderModal}
+        onClose={() => setShowCreateReminderModal(false)}
+        onCreated={(content, attachments) => {
+          sendMessage(conversationId, content, attachments);
+        }}
+      />
+
+      <CreateNoteModal
+        open={showCreateNoteModal}
+        onClose={() => setShowCreateNoteModal(false)}
+        onCreated={(content, attachments) => {
+          sendMessage(conversationId, content, attachments);
+        }}
+      />
+
+      <CreateTodoModal
+        open={showCreateTodoModal}
+        members={members}
+        onClose={() => setShowCreateTodoModal(false)}
+        onCreated={(content, attachments) => {
+          sendMessage(conversationId, content, attachments);
+        }}
       />
 
       <MediaPreviewModal

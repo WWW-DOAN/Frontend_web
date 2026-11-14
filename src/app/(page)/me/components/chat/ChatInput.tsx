@@ -27,6 +27,9 @@ import FiberManualRecordIcon from "@mui/icons-material/FiberManualRecord";
 import PollOutlinedIcon from "@mui/icons-material/PollOutlined";
 import ContactPageOutlinedIcon from "@mui/icons-material/ContactPageOutlined";
 import LocationOnOutlinedIcon from "@mui/icons-material/LocationOnOutlined";
+import AlarmOutlinedIcon from "@mui/icons-material/AlarmOutlined";
+import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
+import AssignmentTurnedInOutlinedIcon from "@mui/icons-material/AssignmentTurnedInOutlined";
 import dynamic from "next/dynamic";
 import InsertEmoticonRoundedIcon from "@mui/icons-material/InsertEmoticonRounded";
 import { EmojiClickData } from "emoji-picker-react";
@@ -60,6 +63,9 @@ interface ChatInputProps {
   isGroup?: boolean;
   onOpenCreatePoll?: () => void;
   onOpenShareContact?: () => void;
+  onOpenCreateReminder?: () => void;
+  onOpenCreateNote?: () => void;
+  onOpenCreateTodo?: () => void;
 }
 
 const ChatInputContainer = styled(Box)({
@@ -198,6 +204,9 @@ export default function ChatInput({
   isGroup: isGroupProp,
   onOpenCreatePoll,
   onOpenShareContact,
+  onOpenCreateReminder,
+  onOpenCreateNote,
+  onOpenCreateTodo,
 }: ChatInputProps) {
   const isMobile = useMediaQuery("(max-width:767px)");
   const currentUserId = useChatStore((state) => state.currentUserId);
@@ -778,6 +787,42 @@ export default function ChatInput({
                   aria-label="create-poll"
                 >
                   <PollOutlinedIcon fontSize="small" />
+                </IconBtn>
+              </Tooltip>
+            )}
+
+            {isGroupConv && onOpenCreateReminder && (
+              <Tooltip title="Tạo nhắc hẹn" placement="top">
+                <IconBtn
+                  onClick={onOpenCreateReminder}
+                  disabled={disabled || uploading}
+                  aria-label="create-reminder"
+                >
+                  <AlarmOutlinedIcon fontSize="small" />
+                </IconBtn>
+              </Tooltip>
+            )}
+
+            {isGroupConv && onOpenCreateNote && (
+              <Tooltip title="Tạo ghi chú" placement="top">
+                <IconBtn
+                  onClick={onOpenCreateNote}
+                  disabled={disabled || uploading}
+                  aria-label="create-note"
+                >
+                  <DescriptionOutlinedIcon fontSize="small" />
+                </IconBtn>
+              </Tooltip>
+            )}
+
+            {isGroupConv && onOpenCreateTodo && (
+              <Tooltip title="Giao việc (To-Do)" placement="top">
+                <IconBtn
+                  onClick={onOpenCreateTodo}
+                  disabled={disabled || uploading}
+                  aria-label="create-todo"
+                >
+                  <AssignmentTurnedInOutlinedIcon fontSize="small" />
                 </IconBtn>
               </Tooltip>
             )}

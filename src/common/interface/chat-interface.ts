@@ -1,4 +1,4 @@
-export type AttachmentType = "image" | "document" | "audio" | "video" | "contact" | "location";
+export type AttachmentType = "image" | "document" | "audio" | "video" | "contact" | "location" | "reminder" | "note" | "todo";
 
 export interface ReactionDto {
   emoji: string;

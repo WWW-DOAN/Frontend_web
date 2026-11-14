@@ -48,6 +48,10 @@ import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
 import PauseRoundedIcon from "@mui/icons-material/PauseRounded";
 import FileAttachmentCard from "./FileAttachmentCard";
 import LinkPreviewCard from "./LinkPreviewCard";
+import AlarmIcon from "@mui/icons-material/Alarm";
+import DescriptionIcon from "@mui/icons-material/Description";
+import AssignmentTurnedInIcon from "@mui/icons-material/AssignmentTurnedIn";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import { buildS3Url } from "@/src/common/components/MediaPreviewModal";
 import type { ConversationMemberDto } from "@/src/common/interface/chat-interface";
 
@@ -784,6 +788,18 @@ const MessageItem: React.FC<MessageItemProps> = ({
     return a.type?.toLowerCase() === 'location' || (a as any).content_type === 'location';
   });
 
+  const reminderAttachments = attachments.filter((a) => {
+    return a.type?.toLowerCase() === 'reminder' || (a as any).content_type === 'reminder';
+  });
+
+  const noteAttachments = attachments.filter((a) => {
+    return a.type?.toLowerCase() === 'note' || (a as any).content_type === 'note';
+  });
+
+  const todoAttachments = attachments.filter((a) => {
+    return a.type?.toLowerCase() === 'todo' || (a as any).content_type === 'todo';
+  });
+
   const mediaAttachments = attachments.filter((a) => {
     const type = a.type?.toLowerCase();
     const contentType = (a.contentType || a.content_type || '').toLowerCase();
@@ -796,7 +812,7 @@ const MessageItem: React.FC<MessageItemProps> = ({
     const contentType = (a.contentType || a.content_type || '').toLowerCase();
     const isFile = type === 'document' || type === 'file' ||
       (!contentType.startsWith('image/') && !contentType.startsWith('video/') && !contentType.startsWith('audio/'));
-    return isFile && !mediaAttachments.includes(a) && !audioAttachments.includes(a) && !contactAttachments.includes(a) && !locationAttachments.includes(a);
+    return isFile && !mediaAttachments.includes(a) && !audioAttachments.includes(a) && !contactAttachments.includes(a) && !locationAttachments.includes(a) && !reminderAttachments.includes(a) && !noteAttachments.includes(a) && !todoAttachments.includes(a);
   });
 
   const linkUrls = content.match(/(https?:\/\/[^\s]+)/g) || [];
@@ -1313,6 +1329,139 @@ const MessageItem: React.FC<MessageItemProps> = ({
                             </Button>
                           </Box>
                         </Box>
+                      </Box>
+                    );
+                  })}
+                </Box>
+              )}
+
+              {reminderAttachments.length > 0 && (
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 1, mt: 1 }}>
+                  {reminderAttachments.map((att, index) => {
+                    const meta = (att as any).metadata || {};
+                    return (
+                      <Box
+                        key={att.key || index}
+                        sx={{
+                          p: 1.5,
+                          borderRadius: 2,
+                          border: "1px solid #FCD34D",
+                          bgcolor: "#FFFBEB",
+                          maxWidth: 300,
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 0.8,
+                        }}
+                      >
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                          <AlarmIcon sx={{ color: "#D97706", fontSize: 20 }} />
+                          <Typography sx={{ fontWeight: 700, fontSize: 14, color: "#92400E" }}>
+                            {meta.title || att.name}
+                          </Typography>
+                        </Box>
+                        <Typography sx={{ fontSize: 12, color: "#78350F" }}>
+                          📅 Thời gian: <strong>{meta.dateTime || "Sắp diễn ra"}</strong>
+                        </Typography>
+                        {meta.repeatLabel && meta.repeatLabel !== "Không lặp" && (
+                          <Chip
+                            label={`🔄 ${meta.repeatLabel}`}
+                            size="small"
+                            sx={{ alignSelf: "flex-start", fontSize: 11, bgcolor: "#FEF3C7", color: "#B45309" }}
+                          />
+                        )}
+                        {meta.note && (
+                          <Typography sx={{ fontSize: 12, color: "#6B7280", fontStyle: "italic" }}>
+                            {meta.note}
+                          </Typography>
+                        )}
+                      </Box>
+                    );
+                  })}
+                </Box>
+              )}
+
+              {noteAttachments.length > 0 && (
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 1, mt: 1 }}>
+                  {noteAttachments.map((att, index) => {
+                    const meta = (att as any).metadata || {};
+                    return (
+                      <Box
+                        key={att.key || index}
+                        sx={{
+                          p: 1.5,
+                          borderRadius: 2,
+                          border: "1px solid #BFDBFE",
+                          bgcolor: "#EFF6FF",
+                          maxWidth: 320,
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 0.8,
+                        }}
+                      >
+                        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                            <DescriptionIcon sx={{ color: "#2563EB", fontSize: 20 }} />
+                            <Typography sx={{ fontWeight: 700, fontSize: 14, color: "#1E40AF" }}>
+                              {meta.title || att.name}
+                            </Typography>
+                          </Box>
+                          {meta.pinToTop && (
+                            <Chip label="Đã ghim" size="small" color="primary" sx={{ fontSize: 10, height: 18 }} />
+                          )}
+                        </Box>
+                        <Typography sx={{ fontSize: 13, color: "#1F2937", whiteSpace: "pre-wrap" }}>
+                          {meta.content || ""}
+                        </Typography>
+                      </Box>
+                    );
+                  })}
+                </Box>
+              )}
+
+              {todoAttachments.length > 0 && (
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 1, mt: 1 }}>
+                  {todoAttachments.map((att, index) => {
+                    const meta = (att as any).metadata || {};
+                    return (
+                      <Box
+                        key={att.key || index}
+                        sx={{
+                          p: 1.5,
+                          borderRadius: 2,
+                          border: "1px solid #E0E7FF",
+                          bgcolor: "#F5F3FF",
+                          maxWidth: 300,
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 1,
+                        }}
+                      >
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                          <AssignmentTurnedInIcon sx={{ color: "#7C3AED", fontSize: 20 }} />
+                          <Typography sx={{ fontWeight: 700, fontSize: 14, color: "#5B21B6" }}>
+                            {meta.title || att.name}
+                          </Typography>
+                        </Box>
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                          <Typography sx={{ fontSize: 12, color: "#4B5563" }}>Giao cho:</Typography>
+                          <Avatar
+                            src={resolveMediaUrl(meta.assigneeAvatar) || undefined}
+                            sx={{ width: 20, height: 20, fontSize: 10 }}
+                          >
+                            {(meta.assigneeName || "?")[0]?.toUpperCase()}
+                          </Avatar>
+                          <Typography sx={{ fontSize: 12, fontWeight: 600, color: "#111827" }}>
+                            {meta.assigneeName || "Thành viên"}
+                          </Typography>
+                        </Box>
+                        <Typography sx={{ fontSize: 12, color: "#DC2626" }}>
+                          ⏳ Hạn chót: <strong>{meta.dueDate || "Không có hạn"}</strong>
+                        </Typography>
+                        {meta.description && (
+                          <Typography sx={{ fontSize: 12, color: "#6B7280" }}>
+                            {meta.description}
+                          </Typography>
+                        )}
                       </Box>
                     );
                   })}

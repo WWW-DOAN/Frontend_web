@@ -239,25 +239,33 @@ export default function InfConvColumn({ conversationId, onClose }: InfConvColumn
       <OverviewCard />
 
       {isGroup && (
-        <GroupMemberListView
-          members={members.map((m: any) => ({
-            id: m.userId,
-            name: m.displayName || m.username || m.userId,
-            avatar: resolveMediaUrl(m.avatarUrl) || undefined,
-            isOwner: m.role === "OWNER",
-            isAdmin: m.role === "OWNER" || m.role === "ADMIN",
-          }))}
-          totalCount={members.length > 0 ? members.length : (conversation?.memberCount ?? 0)}
-          searchValue={memberSearch}
-          onSearch={setMemberSearch}
-          onRemoveMember={handleRemoveMember}
-          onAddMember={handleOpenAddMember}
-          onPromoteToAdmin={handlePromoteToAdmin}
-          onDemoteFromAdmin={handleDemoteFromAdmin}
-          onTransferOwnership={handleTransferOwnership}
-          canManageMembers={isAdmin}
-          canPromote={isOwner}
-        />
+        (conversation?.settings?.policies as any)?.hideMemberList && !isAdmin ? (
+          <Box sx={{ p: 2, textAlign: "center", bgcolor: "#fff", m: 1, borderRadius: 2, border: "1px solid #E5E7EB" }}>
+            <Typography variant="body2" color="text.secondary">
+              🔒 Danh sách thành viên đã bị ẩn bởi Quản trị viên
+            </Typography>
+          </Box>
+        ) : (
+          <GroupMemberListView
+            members={members.map((m: any) => ({
+              id: m.userId,
+              name: m.displayName || m.username || m.userId,
+              avatar: resolveMediaUrl(m.avatarUrl) || undefined,
+              isOwner: m.role === "OWNER",
+              isAdmin: m.role === "OWNER" || m.role === "ADMIN",
+            }))}
+            totalCount={members.length > 0 ? members.length : (conversation?.memberCount ?? 0)}
+            searchValue={memberSearch}
+            onSearch={setMemberSearch}
+            onRemoveMember={handleRemoveMember}
+            onAddMember={handleOpenAddMember}
+            onPromoteToAdmin={handlePromoteToAdmin}
+            onDemoteFromAdmin={handleDemoteFromAdmin}
+            onTransferOwnership={handleTransferOwnership}
+            canManageMembers={isAdmin}
+            canPromote={isOwner}
+          />
+        )
       )}
 
       {isGroup && isAdmin && (

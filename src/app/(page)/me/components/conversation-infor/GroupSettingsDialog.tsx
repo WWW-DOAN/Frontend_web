@@ -63,6 +63,8 @@ export default function GroupSettingsDialog({
   const [canCreatePolls, setCanCreatePolls] = useState(true);
   const [inviteApproval, setInviteApproval] = useState(false);
   const [messageRetention, setMessageRetention] = useState<number>(0);
+  const [hideMemberList, setHideMemberList] = useState(false);
+  const [allowViewPastMessages, setAllowViewPastMessages] = useState(true);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -77,6 +79,8 @@ export default function GroupSettingsDialog({
       if (policies) {
         setInviteApproval(Boolean(policies.inviteApproval));
         setMessageRetention(Number(policies.messageRetention) || 0);
+        setHideMemberList(Boolean((policies as any).hideMemberList));
+        setAllowViewPastMessages((policies as any).allowViewPastMessages !== false);
       }
     }
   }, [conversation]);
@@ -98,7 +102,9 @@ export default function GroupSettingsDialog({
         policies: {
           inviteApproval,
           messageRetention,
-        },
+          hideMemberList,
+          allowViewPastMessages,
+        } as any,
       });
       toast.success("Cập nhật cài đặt nhóm thành công");
       await fetchListConversation({ page: 1, limit: 20 });
@@ -238,6 +244,43 @@ export default function GroupSettingsDialog({
               <MenuItem value={30}>30 ngày</MenuItem>
             </Select>
           </FormControl>
+        </SettingRow>
+        <Divider />
+
+        <SettingRow>
+          <Box sx={{ pr: 2 }}>
+            <Typography sx={{ fontSize: 14, fontWeight: 600, color: "#111827" }}>
+              Ẩn danh sách thành viên
+            </Typography>
+            <Typography sx={{ fontSize: 12, color: "#6B7280" }}>
+              Chỉ Trưởng nhóm và Phó nhóm mới có thể xem danh sách thành viên
+            </Typography>
+          </Box>
+          <Switch
+            checked={hideMemberList}
+            onChange={(e) => setHideMemberList(e.target.checked)}
+            disabled={!isAdmin || saving}
+            color="primary"
+          />
+        </SettingRow>
+
+        <Divider />
+
+        <SettingRow>
+          <Box sx={{ pr: 2 }}>
+            <Typography sx={{ fontSize: 14, fontWeight: 600, color: "#111827" }}>
+              Xem lại tin nhắn cũ
+            </Typography>
+            <Typography sx={{ fontSize: 12, color: "#6B7280" }}>
+              Cho phép thành viên mới xem lịch sử tin nhắn trước khi tham gia nhóm
+            </Typography>
+          </Box>
+          <Switch
+            checked={allowViewPastMessages}
+            onChange={(e) => setAllowViewPastMessages(e.target.checked)}
+            disabled={!isAdmin || saving}
+            color="primary"
+          />
         </SettingRow>
       </DialogContent>
 
