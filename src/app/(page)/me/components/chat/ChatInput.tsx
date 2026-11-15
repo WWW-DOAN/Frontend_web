@@ -39,6 +39,7 @@ import AssignmentTurnedInOutlinedIcon from "@mui/icons-material/AssignmentTurned
 import MoreHorizRoundedIcon from "@mui/icons-material/MoreHorizRounded";
 import SmartToyOutlinedIcon from "@mui/icons-material/SmartToyOutlined";
 import AutoAwesomeOutlinedIcon from "@mui/icons-material/AutoAwesomeOutlined";
+import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 import dynamic from "next/dynamic";
 import InsertEmoticonRoundedIcon from "@mui/icons-material/InsertEmoticonRounded";
 import { EmojiClickData } from "emoji-picker-react";
@@ -273,6 +274,7 @@ export default function ChatInput({
 
   // Smart Replies state
   const [smartReplies, setSmartReplies] = useState<string[]>([]);
+  const [loadingSmartReplies, setLoadingSmartReplies] = useState(false);
   const messagesByConversation = useChatStore((s) => s.messagesByConversation);
   const convMessages = effectiveConvId ? messagesByConversation[effectiveConvId] : undefined;
 
@@ -283,14 +285,48 @@ export default function ChatInput({
 
   const lastCheckedMsgIdRef = useRef<string | null>(null);
 
+  const requestSmartReplies = useCallback(
+    async (force = false) => {
+      if (!effectiveConvId) return;
+      const msgs = messagesByConversation[effectiveConvId] || [];
+      const validMsgs = msgs.filter((m) => !m.isDeleted && Boolean(m.body));
+      if (validMsgs.length === 0) {
+        if (force) {
+          setSmartReplies(["Chào bạn!", "Bạn cần mình hỗ trợ gì?", "Hôm nay thế nào rồi?"]);
+        }
+        return;
+      }
+
+      setLoadingSmartReplies(true);
+      try {
+        const recent = validMsgs.slice(-6).map((m) => ({
+          senderName: m.senderName || (m.senderId === currentUserId ? "Tôi" : "Đối phương"),
+          content: m.body || "",
+          isOwn: m.senderId === currentUserId,
+        }));
+
+        const res = await chatbotService.smartReplies({ recentMessages: recent });
+        if (res.data?.success && res.data.data?.suggestions && res.data.data.suggestions.length > 0) {
+          setSmartReplies(res.data.data.suggestions);
+        } else {
+          setSmartReplies(["Đồng ý nhé", "Để mình kiểm tra lại", "Ok bạn!"]);
+        }
+      } catch (err) {
+        console.warn("[SmartReplies] Request failed, using fallback:", err);
+        setSmartReplies(["Đồng ý nhé", "Để mình xem lại chút", "Ok bạn!"]);
+      } finally {
+        setLoadingSmartReplies(false);
+      }
+    },
+    [effectiveConvId, messagesByConversation, currentUserId]
+  );
+
   useEffect(() => {
-    if (!lastMessage || !effectiveConvId) {
-      setSmartReplies([]);
-      return;
-    }
-    const isOtherSender = lastMessage.senderId !== currentUserId && lastMessage.senderRole !== "BOT";
+    if (!lastMessage || !effectiveConvId) return;
+
+    // Trigger auto suggestion if the latest message was from another user or bot (not current user)
+    const isOtherSender = lastMessage.senderId !== currentUserId;
     if (!isOtherSender || !lastMessage.body || lastMessage.isDeleted) {
-      setSmartReplies([]);
       return;
     }
 
@@ -299,21 +335,8 @@ export default function ChatInput({
     }
     lastCheckedMsgIdRef.current = lastMessage.messageId;
 
-    const recent = (convMessages || []).slice(-5).map((m) => ({
-      senderName: m.senderName || "Đối phương",
-      content: m.body || "",
-      isOwn: m.senderId === currentUserId,
-    }));
-
-    chatbotService
-      .smartReplies({ recentMessages: recent })
-      .then((res) => {
-        if (res.data?.success && res.data.data?.suggestions) {
-          setSmartReplies(res.data.data.suggestions);
-        }
-      })
-      .catch(() => {});
-  }, [lastMessage, effectiveConvId, currentUserId, convMessages]);
+    requestSmartReplies(false);
+  }, [lastMessage, effectiveConvId, currentUserId, requestSmartReplies]);
 
   const handleSelectSmartReply = (replyText: string) => {
     setValue(replyText);
@@ -906,7 +929,7 @@ export default function ChatInput({
         onRemove={handleRemoveAttachment}
       />
 
-      {smartReplies.length > 0 && !value.trim() && (
+      {(smartReplies.length > 0 || loadingSmartReplies) && (
         <Box
           sx={{
             display: "flex",
@@ -916,44 +939,66 @@ export default function ChatInput({
             py: 0.8,
             overflowX: "auto",
             scrollbarWidth: "none",
-            bgcolor: "rgba(124, 58, 237, 0.04)",
-            borderTop: "1px solid rgba(124, 58, 237, 0.12)",
+            bgcolor: "rgba(124, 58, 237, 0.05)",
+            borderTop: "1px solid rgba(124, 58, 237, 0.15)",
           }}
         >
           <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, flexShrink: 0 }}>
             <AutoAwesomeOutlinedIcon sx={{ fontSize: 14, color: "#7C3AED" }} />
             <Typography sx={{ fontSize: 11.5, fontWeight: 700, color: "#7C3AED" }}>
-              Gợi ý trả lời:
+              Gợi ý ZAi:
             </Typography>
           </Box>
-          {smartReplies.map((reply, idx) => (
-            <Chip
-              key={idx}
-              label={reply}
-              size="small"
-              clickable
-              onClick={() => handleSelectSmartReply(reply)}
-              sx={{
-                bgcolor: "#FFFFFF",
-                color: "#1E293B",
-                fontSize: 12,
-                fontWeight: 500,
-                border: "1px solid rgba(124, 58, 237, 0.2)",
-                boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
-                "&:hover": {
-                  bgcolor: "rgba(124, 58, 237, 0.08)",
-                  borderColor: "#7C3AED",
-                },
-              }}
-            />
-          ))}
-          <IconButton
-            size="small"
-            onClick={() => setSmartReplies([])}
-            sx={{ p: 0.3, color: "#94A3B8", ml: "auto" }}
-          >
-            <CloseRoundedIcon sx={{ fontSize: 14 }} />
-          </IconButton>
+          {loadingSmartReplies ? (
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1, py: 0.2 }}>
+              <CircularProgress size={13} sx={{ color: "#7C3AED" }} />
+              <Typography sx={{ fontSize: 12, color: "#7C3AED" }}>
+                Đang tạo gợi ý câu trả lời thông minh...
+              </Typography>
+            </Box>
+          ) : (
+            <>
+              {smartReplies.map((reply, idx) => (
+                <Chip
+                  key={idx}
+                  label={reply}
+                  size="small"
+                  clickable
+                  onClick={() => handleSelectSmartReply(reply)}
+                  sx={{
+                    bgcolor: "#FFFFFF",
+                    color: "#1E293B",
+                    fontSize: 12,
+                    fontWeight: 500,
+                    border: "1px solid rgba(124, 58, 237, 0.25)",
+                    boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
+                    "&:hover": {
+                      bgcolor: "rgba(124, 58, 237, 0.1)",
+                      borderColor: "#7C3AED",
+                    },
+                  }}
+                />
+              ))}
+              <Tooltip title="Đổi gợi ý khác (Làm mới)" placement="top">
+                <IconButton
+                  size="small"
+                  onClick={() => requestSmartReplies(true)}
+                  sx={{ p: 0.3, color: "#7C3AED", "&:hover": { bgcolor: "rgba(124, 58, 237, 0.1)" } }}
+                >
+                  <RefreshRoundedIcon sx={{ fontSize: 15 }} />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Đóng gợi ý" placement="top">
+                <IconButton
+                  size="small"
+                  onClick={() => setSmartReplies([])}
+                  sx={{ p: 0.3, color: "#94A3B8", ml: "auto" }}
+                >
+                  <CloseRoundedIcon sx={{ fontSize: 14 }} />
+                </IconButton>
+              </Tooltip>
+            </>
+          )}
         </Box>
       )}
 
@@ -1048,9 +1093,23 @@ export default function ChatInput({
 
             {uploading && <CircularProgress size={16} sx={{ mx: 0.5 }} />}
 
-            {/* 3. Micro & Image collapse smoothly when text is typed */}
+            {/* 3. AI Smart Replies, Micro & Image collapse smoothly when text is typed */}
             {!hasText && !hasAttachments && (
               <>
+                <Tooltip title="Gợi ý trả lời nhanh (ZAi)" placement="top">
+                  <IconBtn
+                    onClick={() => requestSmartReplies(true)}
+                    disabled={disabled || uploading || loadingSmartReplies}
+                    sx={{
+                      color: "#7C3AED",
+                      "&:hover": { bgcolor: "rgba(124, 58, 237, 0.08)" },
+                    }}
+                    aria-label="smart-replies"
+                  >
+                    <AutoAwesomeOutlinedIcon fontSize="small" />
+                  </IconBtn>
+                </Tooltip>
+
                 <Tooltip title="Ghi âm tin nhắn thoại" placement="top">
                   <IconBtn onClick={startRecording} disabled={disabled || uploading}>
                     <MicRoundedIcon fontSize="small" />
@@ -1097,12 +1156,28 @@ export default function ChatInput({
               PaperProps={{
                 sx: {
                   borderRadius: "10px",
-                  minWidth: 210,
+                  minWidth: 230,
                   boxShadow: "0 6px 20px rgba(0,0,0,0.12)",
                   py: 0.5,
                 },
               }}
             >
+              <MenuItem
+                onClick={() => {
+                  setUtilitiesAnchor(null);
+                  requestSmartReplies(true);
+                }}
+              >
+                <ListItemIcon>
+                  <AutoAwesomeOutlinedIcon fontSize="small" sx={{ color: "#7C3AED" }} />
+                </ListItemIcon>
+                <ListItemText
+                  primary="Gợi ý trả lời nhanh (ZAi)"
+                  secondary="AI tự động phân tích ngữ cảnh"
+                  primaryTypographyProps={{ fontSize: 13, fontWeight: 600, color: "#7C3AED" }}
+                  secondaryTypographyProps={{ fontSize: 11 }}
+                />
+              </MenuItem>
               {isGroupConv && onOpenCreatePoll && (
                 <MenuItem
                   onClick={() => {
