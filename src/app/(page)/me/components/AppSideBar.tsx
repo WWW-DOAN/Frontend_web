@@ -214,7 +214,7 @@ const AppSidebarContent: React.FC<AppSidebarProps> = ({
 
   return (
     <>
-      <Grid data-testid="app-sidebar" sx={{ minWidth: 56, height: "100vh" }}>
+      <Box component="aside" data-testid="app-sidebar" sx={{ width: 56, minWidth: 56, maxWidth: 56, flexShrink: 0, height: "100vh" }}>
         <Sidebar>
           <Box mt="32px">
             <AvatarStyled
@@ -286,7 +286,7 @@ const AppSidebarContent: React.FC<AppSidebarProps> = ({
             </Stack>
           </Stack>
         </Sidebar>
-      </Grid>
+      </Box>
       
       <MenuPopover
         anchorEl={menuAnchorEl}

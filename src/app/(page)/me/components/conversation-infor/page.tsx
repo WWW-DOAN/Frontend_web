@@ -134,20 +134,20 @@ export default function InfConvColumn({
   );
 
   const remindersCount = useMemo(() => {
-    return messages.filter((m) =>
-      m.attachments?.some((a: any) => a.type === "reminder")
+    return (Array.isArray(messages) ? messages : []).filter((m) =>
+      Array.isArray(m?.attachments) && m.attachments.some((a: any) => a?.type === "reminder")
     ).length;
   }, [messages]);
 
   const notesCount = useMemo(() => {
-    return messages.filter((m) =>
-      m.attachments?.some((a: any) => a.type === "note")
+    return (Array.isArray(messages) ? messages : []).filter((m) =>
+      Array.isArray(m?.attachments) && m.attachments.some((a: any) => a?.type === "note")
     ).length;
   }, [messages]);
 
   const todosCount = useMemo(() => {
-    return messages.filter((m) =>
-      m.attachments?.some((a: any) => a.type === "todo")
+    return (Array.isArray(messages) ? messages : []).filter((m) =>
+      Array.isArray(m?.attachments) && m.attachments.some((a: any) => a?.type === "todo")
     ).length;
   }, [messages]);
 
