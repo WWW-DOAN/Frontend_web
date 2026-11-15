@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { Box, IconButton, Typography } from "@mui/material";
+import { Box, IconButton, Typography, Button } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import LinkRoundedIcon from "@mui/icons-material/LinkRounded";
+import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import { toast } from "react-toastify";
 
 import { useChatStore } from "@/src/common/store/useChatStore";
@@ -342,6 +343,103 @@ export default function InfConvColumn({
           onViewPinned={handleViewPinned}
           onViewPolls={handleViewPolls}
         />
+      )}
+
+      {isGroup && (
+        <Box sx={{ px: 2, pb: 1, pt: 0.5 }}>
+          <Box
+            sx={{
+              p: 1.5,
+              borderRadius: "10px",
+              background: "linear-gradient(135deg, rgba(124, 58, 237, 0.06), rgba(0, 90, 224, 0.06))",
+              border: "1px solid rgba(124, 58, 237, 0.18)",
+            }}
+          >
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.8, mb: 0.8 }}>
+              <AutoAwesomeIcon sx={{ fontSize: 18, color: "#7C3AED" }} />
+              <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#4F46E5", fontSize: 13 }}>
+                Trợ lý ZAi trong nhóm
+              </Typography>
+            </Box>
+            <Typography variant="caption" sx={{ color: "#64748B", display: "block", mb: 1 }}>
+              Gõ @ZAi trong ô chat hoặc chọn nhanh tác vụ bên dưới:
+            </Typography>
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 0.8 }}>
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={() => {
+                  window.dispatchEvent(
+                    new CustomEvent("chat:insert_mention", {
+                      detail: { text: "@ZAi tóm tắt đoạn chat gần đây" },
+                    })
+                  );
+                }}
+                sx={{
+                  justifyContent: "flex-start",
+                  textTransform: "none",
+                  fontSize: 12,
+                  py: 0.5,
+                  px: 1.2,
+                  borderColor: "#DDD6FE",
+                  color: "#6D28D9",
+                  bgcolor: "#fff",
+                  "&:hover": { bgcolor: "#F5F3FF", borderColor: "#C4B5FD" },
+                }}
+              >
+                📋 Tóm tắt cuộc trò chuyện
+              </Button>
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={() => {
+                  window.dispatchEvent(
+                    new CustomEvent("chat:insert_mention", {
+                      detail: { text: "@ZAi tóm tắt các việc cần làm và quyết định" },
+                    })
+                  );
+                }}
+                sx={{
+                  justifyContent: "flex-start",
+                  textTransform: "none",
+                  fontSize: 12,
+                  py: 0.5,
+                  px: 1.2,
+                  borderColor: "#DDD6FE",
+                  color: "#6D28D9",
+                  bgcolor: "#fff",
+                  "&:hover": { bgcolor: "#F5F3FF", borderColor: "#C4B5FD" },
+                }}
+              >
+                📌 Tổng hợp việc cần làm (To-Do)
+              </Button>
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={() => {
+                  window.dispatchEvent(
+                    new CustomEvent("chat:insert_mention", {
+                      detail: { text: "@ZAi " },
+                    })
+                  );
+                }}
+                sx={{
+                  justifyContent: "flex-start",
+                  textTransform: "none",
+                  fontSize: 12,
+                  py: 0.5,
+                  px: 1.2,
+                  borderColor: "#DDD6FE",
+                  color: "#6D28D9",
+                  bgcolor: "#fff",
+                  "&:hover": { bgcolor: "#F5F3FF", borderColor: "#C4B5FD" },
+                }}
+              >
+                ❓ Hỏi đáp cùng ZAi
+              </Button>
+            </Box>
+          </Box>
+        </Box>
       )}
 
       {isGroup && (

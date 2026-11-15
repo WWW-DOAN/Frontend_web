@@ -4,13 +4,14 @@ import { useChatStore } from "@/src/common/store/useChatStore";
 import { useTrans } from "@/src/common/utilities/hook/trans";
 import AppAvatar from "@/src/shared/component/Avatar";
 import { resolveMediaUrl } from "@/src/common/helpers/displayMedia.helpers";
-import { Box, IconButton, Typography, useMediaQuery } from "@mui/material";
+import { Box, IconButton, Typography, useMediaQuery, Tooltip } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import PhoneIcon from "@mui/icons-material/Phone";
 import VideoCallIcon from "@mui/icons-material/VideoCall";
 import ViewSidebarOutlinedIcon from "@mui/icons-material/ViewSidebarOutlined";
 import SearchIcon from "@mui/icons-material/Search";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import { startCall, startGroupCall } from "@/src/common/action/call.action";
 import { useMemo } from "react";
 
@@ -207,6 +208,24 @@ export default function ChatHeader({
           </>
         ) : (
           <>
+            <Tooltip title="Tóm tắt đoạn chat với ZAi">
+              <ActionBtn
+                aria-label="Tóm tắt với ZAi"
+                onClick={() => {
+                  window.dispatchEvent(
+                    new CustomEvent("chat:insert_mention", {
+                      detail: { text: "@ZAi tóm tắt đoạn chat gần đây" },
+                    })
+                  );
+                }}
+                sx={{
+                  color: "#7C3AED",
+                  "&:hover": { color: "#6D28D9", bgcolor: "rgba(124, 58, 237, 0.08)" },
+                }}
+              >
+                <AutoAwesomeIcon fontSize="small" />
+              </ActionBtn>
+            </Tooltip>
             <ActionBtn aria-label={t("CHAT.CALL_GROUP")} onClick={() => conversationId && startGroupCall(conversationId)}><PhoneIcon fontSize="small" /></ActionBtn>
             <ActionBtn aria-label="Gọi video nhóm" onClick={() => conversationId && startGroupCall(conversationId)}><VideoCallIcon fontSize="small" /></ActionBtn>
           </>

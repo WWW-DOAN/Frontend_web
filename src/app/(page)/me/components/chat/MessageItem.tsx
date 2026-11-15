@@ -38,6 +38,8 @@ import ReplyOutlinedIcon from "@mui/icons-material/ReplyOutlined";
 import ForwardOutlinedIcon from "@mui/icons-material/ForwardOutlined";
 import PushPinOutlinedIcon from "@mui/icons-material/PushPinOutlined";
 import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
+import SmartToyOutlinedIcon from "@mui/icons-material/SmartToyOutlined";
+import ReactMarkdown from "react-markdown";
 import MoreHorizOutlinedIcon from "@mui/icons-material/MoreHorizOutlined";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import DoneAllRoundedIcon from "@mui/icons-material/DoneAllRounded";
@@ -660,21 +662,30 @@ const renderMessageTextWithMentions = (text: string) => {
   const parts = text.split(/(@[^\s@]+(?:\s+[^\s@]+)?)/g);
   return parts.map((part, index) => {
     if (part.startsWith("@") && part.length > 1) {
-      const isAll = part.trim().toLowerCase() === "@all";
+      const trimmed = part.trim().toLowerCase();
+      const isAll = trimmed === "@all";
+      const isZai = trimmed === "@zai" || trimmed.startsWith("@zai");
       return (
         <Box
           component="span"
           key={index}
           sx={{
-            color: isAll ? "#D97706" : "#005AE0",
+            color: isZai ? "#7C3AED" : isAll ? "#D97706" : "#005AE0",
             fontWeight: 600,
-            bgcolor: isAll ? "rgba(217, 119, 6, 0.1)" : "rgba(0, 90, 224, 0.08)",
-            px: 0.5,
+            bgcolor: isZai
+              ? "rgba(124, 58, 237, 0.12)"
+              : isAll
+              ? "rgba(217, 119, 6, 0.1)"
+              : "rgba(0, 90, 224, 0.08)",
+            px: 0.6,
             py: 0.1,
             borderRadius: 1,
-            display: "inline",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 0.3,
           }}
         >
+          {isZai && <span style={{ fontSize: "11px" }}>✨</span>}
           {part}
         </Box>
       );
@@ -872,13 +883,32 @@ const MessageItem: React.FC<MessageItemProps> = ({
 
   const linkUrls = content.match(/(https?:\/\/[^\s]+)/g) || [];
 
+  const isBotSender =
+    sender?.id === "00000000-0000-0000-0000-000000000001" ||
+    Boolean((sender as any)?.isBot) ||
+    sender?.name === "ZAi";
+
   return (
     <MessageRow mine={isOwn} isGrouped={isGrouped}>
       {!isOwn && (isFirstInGroup ?? !isGrouped) ? (
         <Box sx={{ position: "relative", flexShrink: 0, alignSelf: "flex-end", mb: 0.25 }}>
-          <MessageAvatar src={sender?.avatar}>
-            {sender?.name?.charAt(0).toUpperCase()}
-          </MessageAvatar>
+          {isBotSender ? (
+            <Avatar
+              sx={{
+                width: 32,
+                height: 32,
+                background: "linear-gradient(135deg, #7C3AED, #005AE0)",
+                color: "#fff",
+                boxShadow: "0 2px 6px rgba(124, 58, 237, 0.35)",
+              }}
+            >
+              <SmartToyOutlinedIcon sx={{ fontSize: 18 }} />
+            </Avatar>
+          ) : (
+            <MessageAvatar src={sender?.avatar}>
+              {sender?.name?.charAt(0).toUpperCase()}
+            </MessageAvatar>
+          )}
           {senderRole === "OWNER" && (
             <Tooltip title="Trưởng nhóm">
               <Box
@@ -1010,8 +1040,32 @@ const MessageItem: React.FC<MessageItemProps> = ({
           onDoubleClick={() => onReply?.()}
         >
           {!isOwn && (isFirstInGroup ?? !isGrouped) && sender && (
-            <SenderName sx={{ color: getMemberColor(sender.id) }}>
-              {sender.name}
+            <SenderName
+              sx={{
+                color: isBotSender ? "#7C3AED" : getMemberColor(sender.id),
+                display: "flex",
+                alignItems: "center",
+                gap: 0.6,
+              }}
+            >
+              <span>{sender.name}</span>
+              {isBotSender && (
+                <Box
+                  component="span"
+                  sx={{
+                    fontSize: "10px",
+                    fontWeight: 700,
+                    px: 0.6,
+                    py: 0.1,
+                    borderRadius: "4px",
+                    bgcolor: "#7C3AED",
+                    color: "#fff",
+                    letterSpacing: "0.03em",
+                  }}
+                >
+                  BOT AI
+                </Box>
+              )}
             </SenderName>
           )}
 
@@ -1145,9 +1199,48 @@ const MessageItem: React.FC<MessageItemProps> = ({
               })()}
 
               {!!content && (
-                <MessageText>
-                  {renderMessageTextWithMentions(content)}
-                </MessageText>
+                isBotSender ? (
+                  <Box
+                    sx={{
+                      fontSize: "0.875rem",
+                      lineHeight: 1.6,
+                      color: "#1F2937",
+                      "& p": { margin: 0, marginBottom: "6px", "&:last-child": { marginBottom: 0 } },
+                      "& strong": { fontWeight: 700, color: "#111827" },
+                      "& em": { fontStyle: "italic" },
+                      "& ul": { paddingLeft: "18px", margin: "4px 0" },
+                      "& ol": { paddingLeft: "18px", margin: "4px 0" },
+                      "& li": { marginBottom: "3px" },
+                      "& h1,& h2,& h3": { fontWeight: 700, margin: "8px 0 4px", lineHeight: 1.3, color: "#4F46E5" },
+                      "& h1": { fontSize: "1.05rem" },
+                      "& h2": { fontSize: "0.98rem" },
+                      "& h3": { fontSize: "0.92rem" },
+                      "& code": {
+                        fontFamily: "monospace",
+                        fontSize: "12px",
+                        backgroundColor: "rgba(0,0,0,0.06)",
+                        padding: "1px 5px",
+                        borderRadius: "4px",
+                      },
+                      "& pre": {
+                        backgroundColor: "#1E293B",
+                        color: "#F8FAFC",
+                        padding: "8px 12px",
+                        borderRadius: "8px",
+                        overflowX: "auto",
+                        margin: "6px 0",
+                        "& code": { backgroundColor: "transparent", padding: 0, color: "inherit" },
+                      },
+                      "& hr": { border: "none", borderTop: "1px solid #E5E7EB", margin: "8px 0" },
+                    }}
+                  >
+                    <ReactMarkdown>{content}</ReactMarkdown>
+                  </Box>
+                ) : (
+                  <MessageText>
+                    {renderMessageTextWithMentions(content)}
+                  </MessageText>
+                )
               )}
 
               {audioAttachments.length > 0 && (

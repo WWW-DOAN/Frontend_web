@@ -34,6 +34,8 @@ import AlarmOutlinedIcon from "@mui/icons-material/AlarmOutlined";
 import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
 import AssignmentTurnedInOutlinedIcon from "@mui/icons-material/AssignmentTurnedInOutlined";
 import MoreHorizRoundedIcon from "@mui/icons-material/MoreHorizRounded";
+import SmartToyOutlinedIcon from "@mui/icons-material/SmartToyOutlined";
+import AutoAwesomeOutlinedIcon from "@mui/icons-material/AutoAwesomeOutlined";
 import dynamic from "next/dynamic";
 import InsertEmoticonRoundedIcon from "@mui/icons-material/InsertEmoticonRounded";
 import { EmojiClickData } from "emoji-picker-react";
@@ -291,8 +293,23 @@ export default function ChatInput({
   // @All special entry for OWNER/ADMIN
   const allEntry = { userId: "__all__", displayName: "All", fullName: "All", username: "All", avatarUrl: null };
 
+  // @ZAi special bot entry
+  const zaiEntry = {
+    userId: "__zai__",
+    displayName: "ZAi",
+    fullName: "ZAi (Trợ lý AI)",
+    username: "ZAi",
+    avatarUrl: null,
+    isBot: true,
+  };
+
+  const isZaiMatch =
+    mentionFilter !== null &&
+    ("zai".includes(mentionFilter) || "ai".includes(mentionFilter) || mentionFilter === "");
+
   const filteredMembers = mentionFilter !== null
     ? [
+        ...(isZaiMatch ? [zaiEntry] : []),
         ...(isOwnerOrAdmin && "all".includes(mentionFilter) ? [allEntry] : []),
         ...members.filter((m: any) => {
           const name = (m.displayName || m.fullName || m.username || "").toLowerCase();
@@ -300,6 +317,26 @@ export default function ChatInput({
         }),
       ]
     : [];
+
+  // Listen to quick action trigger to insert @ZAi
+  useEffect(() => {
+    const handleInsertMention = (e: any) => {
+      const textToInsert = e.detail?.text || "@ZAi tóm tắt đoạn chat gần đây";
+      setValue((prev) => (prev ? `${prev.trim()} ${textToInsert} ` : `${textToInsert} `));
+      requestAnimationFrame(() => {
+        if (inputRef.current) {
+          inputRef.current.focus();
+          const len = inputRef.current.value.length;
+          inputRef.current.setSelectionRange(len, len);
+        }
+      });
+    };
+
+    window.addEventListener("chat:insert_mention", handleInsertMention);
+    return () => {
+      window.removeEventListener("chat:insert_mention", handleInsertMention);
+    };
+  }, []);
 
   // Cleanup audio tracks on unmount
   useEffect(() => {
@@ -708,6 +745,7 @@ export default function ChatInput({
           <List dense disablePadding>
             {filteredMembers.map((member: any, idx: number) => {
               const name = member.displayName || member.fullName || member.username;
+              const isBot = member.isBot;
               return (
                 <ListItemButton
                   key={member.userId}
@@ -715,20 +753,57 @@ export default function ChatInput({
                   onClick={() => selectMention(member)}
                   sx={{
                     py: 0.8,
-                    "&.Mui-selected": { bgcolor: "#EFF6FF" },
-                    "&:hover": { bgcolor: "#F1F5F9" },
+                    "&.Mui-selected": { bgcolor: isBot ? "#F5F3FF" : "#EFF6FF" },
+                    "&:hover": { bgcolor: isBot ? "#FAF5FF" : "#F1F5F9" },
                   }}
                 >
                   <ListItemAvatar sx={{ minWidth: 38 }}>
-                    <Avatar src={member.avatarUrl} sx={{ width: 28, height: 28 }}>
-                      {name?.charAt(0).toUpperCase()}
-                    </Avatar>
+                    {isBot ? (
+                      <Avatar
+                        sx={{
+                          width: 28,
+                          height: 28,
+                          background: "linear-gradient(135deg, #7C3AED, #005AE0)",
+                          color: "#fff",
+                        }}
+                      >
+                        <SmartToyOutlinedIcon sx={{ fontSize: 16 }} />
+                      </Avatar>
+                    ) : (
+                      <Avatar src={member.avatarUrl} sx={{ width: 28, height: 28 }}>
+                        {name?.charAt(0).toUpperCase()}
+                      </Avatar>
+                    )}
                   </ListItemAvatar>
                   <ListItemText
-                    primary={name}
-                    secondary={`@${member.username || ""}`}
+                    primary={
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 0.8 }}>
+                        <span>{name}</span>
+                        {isBot && (
+                          <Box
+                            component="span"
+                            sx={{
+                              fontSize: "10px",
+                              fontWeight: 700,
+                              px: 0.6,
+                              py: 0.1,
+                              borderRadius: "4px",
+                              bgcolor: "#7C3AED",
+                              color: "#fff",
+                            }}
+                          >
+                            BOT AI
+                          </Box>
+                        )}
+                      </Box>
+                    }
+                    secondary={
+                      isBot
+                        ? "Hỏi đáp, tóm tắt đoạn chat..."
+                        : `@${member.username || ""}`
+                    }
                     primaryTypographyProps={{ fontSize: 13, fontWeight: 500 }}
-                    secondaryTypographyProps={{ fontSize: 11 }}
+                    secondaryTypographyProps={{ fontSize: 11, color: isBot ? "#7C3AED" : undefined }}
                   />
                 </ListItemButton>
               );
