@@ -52,6 +52,10 @@ import AlarmIcon from "@mui/icons-material/Alarm";
 import DescriptionIcon from "@mui/icons-material/Description";
 import AssignmentTurnedInIcon from "@mui/icons-material/AssignmentTurnedIn";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import PlaceIcon from "@mui/icons-material/Place";
+import EventIcon from "@mui/icons-material/Event";
+import AutorenewIcon from "@mui/icons-material/Autorenew";
+import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import { buildS3Url } from "@/src/common/components/MediaPreviewModal";
 import type { ConversationMemberDto } from "@/src/common/interface/chat-interface";
 
@@ -1312,9 +1316,12 @@ const MessageItem: React.FC<MessageItemProps> = ({
                           title="Bản đồ vị trí"
                         />
                         <Box sx={{ p: 1.5 }}>
-                          <Typography variant="caption" color="text.secondary" display="block">
-                            📍 {address}
-                          </Typography>
+                          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                            <PlaceIcon sx={{ fontSize: 15, color: "#EA580C" }} />
+                            <Typography variant="caption" color="text.secondary" display="block">
+                              {address}
+                            </Typography>
+                          </Box>
                           <Box sx={{ display: "flex", gap: 1, mt: 0.5 }}>
                             <Button
                               size="small"
@@ -1359,12 +1366,16 @@ const MessageItem: React.FC<MessageItemProps> = ({
                             {meta.title || att.name}
                           </Typography>
                         </Box>
-                        <Typography sx={{ fontSize: 12, color: "#78350F" }}>
-                          📅 Thời gian: <strong>{meta.dateTime || "Sắp diễn ra"}</strong>
-                        </Typography>
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                          <EventIcon sx={{ fontSize: 15, color: "#D97706" }} />
+                          <Typography sx={{ fontSize: 12, color: "#78350F" }}>
+                            Thời gian: <strong>{meta.dateTime || "Sắp diễn ra"}</strong>
+                          </Typography>
+                        </Box>
                         {meta.repeatLabel && meta.repeatLabel !== "Không lặp" && (
                           <Chip
-                            label={`🔄 ${meta.repeatLabel}`}
+                            icon={<AutorenewIcon sx={{ fontSize: 13, color: "#B45309 !important" }} />}
+                            label={meta.repeatLabel}
                             size="small"
                             sx={{ alignSelf: "flex-start", fontSize: 11, bgcolor: "#FEF3C7", color: "#B45309" }}
                           />
@@ -1454,9 +1465,12 @@ const MessageItem: React.FC<MessageItemProps> = ({
                             {meta.assigneeName || "Thành viên"}
                           </Typography>
                         </Box>
-                        <Typography sx={{ fontSize: 12, color: "#DC2626" }}>
-                          ⏳ Hạn chót: <strong>{meta.dueDate || "Không có hạn"}</strong>
-                        </Typography>
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                          <AccessTimeIcon sx={{ fontSize: 15, color: "#DC2626" }} />
+                          <Typography sx={{ fontSize: 12, color: "#DC2626" }}>
+                            Hạn chót: <strong>{meta.dueDate || "Không có hạn"}</strong>
+                          </Typography>
+                        </Box>
                         {meta.description && (
                           <Typography sx={{ fontSize: 12, color: "#6B7280" }}>
                             {meta.description}

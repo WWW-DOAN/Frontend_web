@@ -65,7 +65,7 @@ export default function CreateTodoModal({
       },
     };
 
-    const messageText = `📋 Giao việc: ${title.trim()} -> ${assigneeName} (Hạn chót: ${dueDate} ${dueTime})`;
+    const messageText = `Giao việc: ${title.trim()} -> ${assigneeName} (Hạn chót: ${dueDate} ${dueTime})`;
     onCreated(messageText, [todoPayload]);
     setTitle("");
     setDescription("");

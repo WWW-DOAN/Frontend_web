@@ -5,6 +5,8 @@ import { Box, IconButton, Typography } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
+import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
+import LinkRoundedIcon from "@mui/icons-material/LinkRounded";
 import { toast } from "react-toastify";
 
 import { useChatStore } from "@/src/common/store/useChatStore";
@@ -345,9 +347,12 @@ export default function InfConvColumn({
       {isGroup && (
         (conversation?.settings?.policies as any)?.hideMemberList && !isAdmin ? (
           <Box sx={{ p: 2, textAlign: "center", bgcolor: "#fff", m: 1, borderRadius: 2, border: "1px solid #E5E7EB" }}>
-            <Typography variant="body2" color="text.secondary">
-              🔒 Danh sách thành viên đã bị ẩn bởi Quản trị viên
-            </Typography>
+            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 0.8 }}>
+              <LockOutlinedIcon sx={{ fontSize: 16, color: "#64748B" }} />
+              <Typography variant="body2" color="text.secondary">
+                Danh sách thành viên đã bị ẩn bởi Quản trị viên
+              </Typography>
+            </Box>
           </Box>
         ) : (
           <GroupMemberListView
@@ -426,7 +431,8 @@ export default function InfConvColumn({
               "&:hover": { bgcolor: "#DBEAFE" },
             }}
           >
-            🔗 Mời vào nhóm bằng liên kết
+            <LinkRoundedIcon sx={{ fontSize: 18 }} />
+            Mời vào nhóm bằng liên kết
           </Box>
         </Box>
       )}

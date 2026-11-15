@@ -46,7 +46,7 @@ export default function CreateNoteModal({
       },
     };
 
-    const messageText = `📝 Ghi chú: ${title.trim()}\n${body.trim()}`;
+    const messageText = `Ghi chú: ${title.trim()}\n${body.trim()}`;
     onCreated(messageText, [notePayload], pinToTop);
     setTitle("");
     setBody("");

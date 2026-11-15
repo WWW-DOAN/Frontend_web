@@ -409,7 +409,7 @@ export default function ChatInput({
             address: `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`,
           },
         };
-        onSend("📍 Đã chia sẻ vị trí", [locationPayload]);
+        onSend("Đã chia sẻ vị trí", [locationPayload]);
       },
       () => alert("Không thể lấy vị trí. Vui lòng cho phép truy cập.")
     );

@@ -59,7 +59,7 @@ export default function CreateReminderModal({
       },
     };
 
-    const messageText = `⏰ Nhắc hẹn: ${title.trim()} (${date} lúc ${time} - ${repeatLabels[repeat]})`;
+    const messageText = `Nhắc hẹn: ${title.trim()} (${date} lúc ${time} - ${repeatLabels[repeat]})`;
     onCreated(messageText, [reminderPayload]);
     setTitle("");
     setNote("");
