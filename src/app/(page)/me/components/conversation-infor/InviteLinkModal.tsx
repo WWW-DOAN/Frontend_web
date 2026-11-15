@@ -16,8 +16,8 @@ import {
   Alert,
   Tooltip,
 } from "@mui/material";
-import { Close, ContentCopy, Refresh, QrCode } from "@mui/icons-material";
-import { useEffect, useRef, useState } from "react";
+import { Close, ContentCopy, Refresh } from "@mui/icons-material";
+import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 
 interface InviteLinkModalProps {
@@ -36,8 +36,6 @@ export default function InviteLinkModal({
   const [isLoading, setIsLoading] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showQr, setShowQr] = useState(false);
-  const qrRef = useRef<HTMLCanvasElement>(null);
 
   const fetchInviteLink = async () => {
     setIsLoading(true);
@@ -64,24 +62,6 @@ export default function InviteLinkModal({
       fetchInviteLink();
     }
   }, [open, conversationId]);
-
-  // Draw QR code using canvas when link changes
-  useEffect(() => {
-    if (!showQr || !inviteLink || !qrRef.current) return;
-    // Simple URL display instead of full QR library to avoid dep install
-    const canvas = qrRef.current;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    canvas.width = 180;
-    canvas.height = 180;
-    ctx.fillStyle = "#F3F4F6";
-    ctx.fillRect(0, 0, 180, 180);
-    ctx.fillStyle = "#6B7280";
-    ctx.font = "11px sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText("QR code", 90, 90);
-    ctx.fillText("(cần thư viện qrcode)", 90, 110);
-  }, [showQr, inviteLink]);
 
   const handleCopy = () => {
     if (!inviteLink) return;
@@ -175,22 +155,9 @@ export default function InviteLinkModal({
               </Box>
             )}
 
-            {showQr && (
-              <Box sx={{ display: "flex", justifyContent: "center", mt: 1 }}>
-                <canvas ref={qrRef} style={{ border: "1px solid #E5E7EB", borderRadius: 8 }} />
-              </Box>
-            )}
-
             <Divider />
 
-            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <Button
-                startIcon={<QrCode />}
-                size="small"
-                onClick={() => setShowQr((v) => !v)}
-              >
-                {showQr ? "Ẩn mã QR" : "Hiện mã QR"}
-              </Button>
+            <Box sx={{ display: "flex", justifyContent: "flex-end", alignItems: "center" }}>
               <Button
                 startIcon={<Refresh />}
                 size="small"
