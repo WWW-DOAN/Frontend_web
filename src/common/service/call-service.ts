@@ -51,10 +51,18 @@ export interface ConsumeResponse {
   type: string;
 }
 
+export interface SfuProducerInfo {
+  id: string;
+  kind: "audio" | "video";
+  peerId?: string;
+  appData?: any;
+}
+
 export interface RoomResponse {
   roomId: string;
   conversationId: string;
   routerRtpCapabilities: any;
+  producers?: SfuProducerInfo[];
 }
 
 export const callService = {
@@ -125,6 +133,11 @@ export const callService = {
 
   async getSfuRoom(roomId: string): Promise<RoomResponse> {
     const res = await http.get<RoomResponse>(API.API_SFU_ROOM(roomId));
+    return res.payload;
+  },
+
+  async getSfuProducers(roomId: string): Promise<{ producers: SfuProducerInfo[] }> {
+    const res = await http.get<{ producers: SfuProducerInfo[] }>(API.API_SFU_PRODUCERS(roomId));
     return res.payload;
   },
 

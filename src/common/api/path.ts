@@ -202,6 +202,7 @@ export const API = {
         `/api/conversations/${conversationId}/group-calls/active`,
     API_SFU_ROOMS: "/api/sfu/rooms",
     API_SFU_ROOM: (roomId: string) => `/api/sfu/rooms/${roomId}`,
+    API_SFU_PRODUCERS: (roomId: string) => `/api/sfu/rooms/${roomId}/producers`,
     API_SFU_CREATE_TRANSPORT: (roomId: string) => `/api/sfu/rooms/${roomId}/create-transport`,
     API_SFU_CONNECT_TRANSPORT: (roomId: string) => `/api/sfu/rooms/${roomId}/connect-transport`,
     API_SFU_PRODUCE: (roomId: string) => `/api/sfu/rooms/${roomId}/produce`,

@@ -21,4 +21,7 @@ export {
   handleIncomingGroupCall,
   endGroupCall,
   handleSfuSignal,
+  toggleGroupAudio,
+  toggleGroupVideo,
+  replaceGroupVideoTrack,
 } from './call-group.action';

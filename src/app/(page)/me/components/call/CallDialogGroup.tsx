@@ -13,7 +13,7 @@ import VolumeUpIcon from "@mui/icons-material/VolumeUp";
 import VolumeDownIcon from "@mui/icons-material/VolumeDown";
 import FlipCameraIosIcon from "@mui/icons-material/FlipCameraIos";
 import { useCallStore, SfuPeerStream } from "@/src/common/store/useCallStore";
-import { endGroupCall } from "@/src/common/action/call.action";
+import { endGroupCall, toggleGroupAudio, toggleGroupVideo, replaceGroupVideoTrack } from "@/src/common/action/call.action";
 import { useTrans } from "@/src/common/utilities/hook/trans";
 import { userService } from "@/src/common/service/user-service";
 import { resolveMediaUrl } from "@/src/common/helpers/displayMedia.helpers";
@@ -324,18 +324,16 @@ export default function CallDialogGroup() {
   }, [conversationId, sessionId]);
 
   const handleToggleAudio = useCallback(() => {
-    if (localStream) {
-      localStream.getAudioTracks().forEach((t) => (t.enabled = audioMuted));
-      setAudioMuted(!audioMuted);
-    }
-  }, [localStream, audioMuted]);
+    const nextState = !audioMuted;
+    setAudioMuted(nextState);
+    toggleGroupAudio(!nextState);
+  }, [audioMuted]);
 
   const handleToggleVideo = useCallback(() => {
-    if (localStream) {
-      localStream.getVideoTracks().forEach((t) => (t.enabled = videoMuted));
-      setVideoMuted(!videoMuted);
-    }
-  }, [localStream, videoMuted]);
+    const nextState = !videoMuted;
+    setVideoMuted(nextState);
+    toggleGroupVideo(!nextState);
+  }, [videoMuted]);
 
   const handleToggleSpeaker = useCallback(async () => {
     try {
@@ -369,6 +367,7 @@ export default function CallDialogGroup() {
       localStream.addTrack(newTrack);
       useCallStore.getState().setLocalStream(localStream);
       setCameraFacingMode(newFacing);
+      replaceGroupVideoTrack(newTrack);
     } catch (err) {
       console.warn("[SwitchCamera] failed:", err);
     }
