@@ -7,6 +7,7 @@ const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL;
 let stompClient: Client | null = null;
 let currentUserId: string | null = null;
 const conversationSubscriptions = new Map<string, Map<string, any>>();
+const pendingConversationSubscriptions = new Set<string>();
 
 const dispatchChatEvent = (eventName: string, body: string) => {
   try {
@@ -21,12 +22,14 @@ const dispatchChatEvent = (eventName: string, body: string) => {
 export const connectSocket = (accessToken?: string, userId?: string) => {
   currentUserId = userId || null;
 
-  if (stompClient && stompClient.connected) {
+  if (stompClient && (stompClient.connected || stompClient.active)) {
     return stompClient;
   }
 
   if (stompClient) {
-    stompClient.deactivate();
+    try {
+      stompClient.deactivate();
+    } catch {}
     stompClient = null;
   }
 
@@ -47,6 +50,13 @@ export const connectSocket = (accessToken?: string, userId?: string) => {
       if (currentUserId) {
         stompClient?.subscribe(
           "/user/queue/messages",
+          (message: IMessage) => {
+            dispatchChatEvent("chat:new", message.body);
+          },
+        );
+
+        stompClient?.subscribe(
+          `/topic/user-messages/${currentUserId}`,
           (message: IMessage) => {
             dispatchChatEvent("chat:new", message.body);
           },
@@ -153,9 +163,15 @@ export const connectSocket = (accessToken?: string, userId?: string) => {
         );
       }
 
-      const previousConversationIds = Array.from(conversationSubscriptions.keys());
+      const previousConversationIds = Array.from(new Set([
+        ...Array.from(conversationSubscriptions.keys()),
+        ...Array.from(pendingConversationSubscriptions),
+      ]));
       conversationSubscriptions.clear();
-      previousConversationIds.forEach((conversationId) => subscribeToConversation(conversationId));
+      previousConversationIds.forEach((conversationId) => {
+        subscribeToConversation(conversationId);
+        sendSocketMessage("/app/chat/join", { conversation_id: conversationId });
+      });
     },
     onStompError: (frame) => {
       console.error("STOMP error:", frame.headers["message"]);
@@ -222,7 +238,9 @@ function subscribeIfMissing(conversationId: string, key: string, destination: st
 }
 
 export const subscribeToConversation = (conversationId: string) => {
-  if (!stompClient || !stompClient.connected || !conversationId) return;
+  if (!conversationId) return;
+  pendingConversationSubscriptions.add(conversationId);
+  if (!stompClient || !stompClient.connected) return;
 
   subscribeIfMissing(conversationId, "typing", `/topic/conv.${conversationId}/typing`, (message) => {
     try {
@@ -320,9 +338,14 @@ export const subscribeToConversation = (conversationId: string) => {
 };
 
 export const unsubscribeFromConversation = (conversationId: string) => {
+  pendingConversationSubscriptions.delete(conversationId);
   const subs = conversationSubscriptions.get(conversationId);
   if (subs) {
-    subs.forEach((sub) => sub.unsubscribe());
+    subs.forEach((sub) => {
+      try {
+        sub.unsubscribe();
+      } catch {}
+    });
     conversationSubscriptions.delete(conversationId);
   }
 };

@@ -23,7 +23,6 @@ import { useChatStore } from "@/src/common/store/useChatStore";
 import {
   deleteMessage,
   editMessage,
-  initChat,
   loadMoreMessages,
   openConversation,
   pinMessage,
@@ -290,10 +289,6 @@ export default function ChatPanel({
     setReplyMessageId(null);
     setReplyMessageData(null);
   };
-  useEffect(() => {
-    if (!accessToken || !currentUserId) return;
-    initChat(accessToken, currentUserId);
-  }, [accessToken, currentUserId]);
 
   useEffect(() => {
     if (!conversationId) return;

@@ -670,7 +670,7 @@ const renderMessageTextWithMentions = (text: string, memberNames: string[] = [])
   const sortedNames = Array.from(names).sort((a, b) => b.length - a.length);
   const escaped = sortedNames.map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
   const regex = new RegExp(
-    `((?:^|(?<=[\\s(]))(?:@(?:${escaped.join("|")})|@[a-zA-Z0-9_\\u00C0-\\u024F\\u1E00-\\u1EFF]+)(?=$|[\\s,.:;!?)]))`,
+    `((?:^|(?<=[\\s(]))(?:@(?:${escaped.join("|")}))(?=$|[\\s,.:;!?)]))`,
     "gi"
   );
 

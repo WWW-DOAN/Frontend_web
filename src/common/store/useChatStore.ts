@@ -198,9 +198,15 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     }),
 
   setListConversation: (items) =>
-    set({
-      listConversation: items,
-      conversationFetched: true,
+    set((state) => {
+      const activeId = (state.activeConversationId || "").trim().toLowerCase();
+      const sanitized = items.map((item) =>
+        activeId && (item.id || "").trim().toLowerCase() === activeId ? { ...item, unreadCount: 0 } : item
+      );
+      return {
+        listConversation: sanitized,
+        conversationFetched: true,
+      };
     }),
 
   setConversationMeta: (meta) => set({ conversationMeta: meta }),
@@ -438,8 +444,14 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
       const res = await chatService.fetchListConversations(params);
 
+      const rawItems = res?.payload?.data ?? [];
+      const activeId = (get().activeConversationId || "").trim().toLowerCase();
+      const sanitized = rawItems.map((item: any) =>
+        activeId && (item.id || "").trim().toLowerCase() === activeId ? { ...item, unreadCount: 0 } : item
+      );
+
       set({
-        listConversation: res?.payload?.data ?? [],
+        listConversation: sanitized,
         conversationMeta: res?.payload?.meta ?? null,
         conversationFetched: true,
       });

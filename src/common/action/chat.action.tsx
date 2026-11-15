@@ -208,7 +208,11 @@ export const fetchListConversation = async (params: { page?: number; limit?: num
       : [];
     const meta = payload?.meta ?? null;
 
-    state.setListConversation(sortConversations(items));
+    const activeId = (useChatStore.getState().activeConversationId || "").trim().toLowerCase();
+    const sanitizedItems = items.map((item: any) =>
+      activeId && (item.id || "").trim().toLowerCase() === activeId ? { ...item, unreadCount: 0 } : item
+    );
+    state.setListConversation(sortConversations(sanitizedItems));
     state.setConversationMeta(meta);
     state.setConversationLoading(false);
     state.setConversationFetched(true);
@@ -527,9 +531,9 @@ export const openConversation = async (conversationId: string) => {
 
   chatService.markConversationAsRead(conversationId).catch(() => {});
 
+  subscribeToConversation(conversationId);
   if (socket?.connected) {
     sendSocketMessage("/app/chat/join", { conversation_id: conversationId });
-    subscribeToConversation(conversationId);
   }
 
   state.setPagination(conversationId, {
@@ -1224,9 +1228,19 @@ export const cleanupChat = () => {
       }
     }
 
-    const conversationExists = state.listConversation.some((cvs) => cvs.id === normalized.conversationId);
-    const isActiveConversation = state.activeConversationId === normalized.conversationId;
-    const isOwnMessage = normalized.senderId === state.currentUserId;
+    const convId = (normalized.conversationId || "").trim();
+    const activeConvId = (state.activeConversationId || "").trim();
+    const conversationExists = state.listConversation.some(
+      (cvs) => (cvs.id || "").trim().toLowerCase() === convId.toLowerCase()
+    );
+    const isActiveConversation = Boolean(
+      activeConvId && convId && activeConvId.toLowerCase() === convId.toLowerCase()
+    );
+    const isOwnMessage = Boolean(
+      state.currentUserId &&
+      normalized.senderId &&
+      state.currentUserId.trim().toLowerCase() === normalized.senderId.trim().toLowerCase()
+    );
 
     if (!isOwnMessage && typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
       if (document.hidden) {
@@ -1259,15 +1273,19 @@ export const cleanupChat = () => {
         )
       : state.listConversation;
 
-    if (conversationExists && !isOwnMessage) {
-      nextConversations = nextConversations.map((conversation) => {
-        if (conversation.id !== normalized.conversationId) return conversation;
-        return {
-          ...conversation,
-          unreadCount: isActiveConversation ? 0 : (conversation.unreadCount ?? 0) + 1,
-        };
-      });
-    }
+    nextConversations = nextConversations.map((conversation) => {
+      const cId = (conversation.id || "").trim().toLowerCase();
+      if (cId !== convId.toLowerCase()) {
+        if (activeConvId && cId === activeConvId.toLowerCase()) {
+          return { ...conversation, unreadCount: 0 };
+        }
+        return conversation;
+      }
+      return {
+        ...conversation,
+        unreadCount: isActiveConversation ? 0 : (conversation.unreadCount ?? 0) + (isOwnMessage ? 0 : 1),
+      };
+    });
 
     if (isActiveConversation && !isOwnMessage) {
       chatService.markConversationAsRead(normalized.conversationId).catch(() => {});
@@ -1276,11 +1294,19 @@ export const cleanupChat = () => {
       _scheduleListSync();
     }
 
+    const nextMessagesMap: Record<string, UiMessage[]> = {
+      ...state.messagesByConversation,
+      [normalized.conversationId]: nextMessages,
+    };
+    if (activeConvId && activeConvId.toLowerCase() === convId.toLowerCase()) {
+      nextMessagesMap[state.activeConversationId!] = nextMessages;
+    }
+    if (msg.conversationId) {
+      nextMessagesMap[msg.conversationId] = nextMessages;
+    }
+
     return {
-      messagesByConversation: {
-        ...state.messagesByConversation,
-        [msg.conversationId]: nextMessages,
-      },
+      messagesByConversation: nextMessagesMap,
       listConversation: nextConversations,
     };
   });
@@ -1326,6 +1352,11 @@ const handleSocketError = (event: any) => {
 const handleSocketConnect = () => {
   useChatStore.getState().setSocketConnected(true);
   syncOnlineUsers();
+  const activeId = useChatStore.getState().activeConversationId;
+  if (activeId) {
+    subscribeToConversation(activeId);
+    sendSocketMessage("/app/chat/join", { conversation_id: activeId });
+  }
 };
 
 const handleSocketDisconnect = (event: any) => {
