@@ -440,7 +440,7 @@ export default function InfConvColumn({
       {isGroup && (
         <GroupSettingsDialog
           open={showGroupSettings}
-          conversationId={conversationId}
+          conversationId={conversationId || activeConversationId || conversation?.id || ""}
           onClose={() => setShowGroupSettings(false)}
           isAdmin={isAdmin}
         />
@@ -449,7 +449,7 @@ export default function InfConvColumn({
       {isGroup && isAdmin && (
         <InviteLinkModal
           open={showInviteLink}
-          conversationId={conversationId}
+          conversationId={conversationId || activeConversationId || conversation?.id || ""}
           onClose={() => setShowInviteLink(false)}
         />
       )}

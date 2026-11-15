@@ -1,6 +1,7 @@
 "use client";
 
 import { chatService } from "@/src/common/service/chat-service";
+import { useChatStore } from "@/src/common/store/useChatStore";
 import {
   Dialog,
   DialogTitle,
@@ -17,7 +18,7 @@ import {
   Tooltip,
 } from "@mui/material";
 import { Close, ContentCopy, Refresh } from "@mui/icons-material";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { toast } from "react-toastify";
 
 interface InviteLinkModalProps {
@@ -26,55 +27,97 @@ interface InviteLinkModalProps {
   onClose: () => void;
 }
 
+function parseInviteData(res: any): { inviteCode: string; fullLink: string } {
+  let data =
+    res?.payload?.data ??
+    res?.payload ??
+    res?.data ??
+    res;
+
+  if (typeof data === "string") {
+    try {
+      data = JSON.parse(data);
+    } catch {
+      // ignore
+    }
+  }
+
+  if (data && typeof data === "object" && data.data) {
+    data = data.data;
+  }
+
+  const code = data?.inviteCode ?? "";
+  const rawLink =
+    data?.inviteLink ?? (code ? `/join-group/${code}` : "");
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  const fullLink = rawLink
+    ? rawLink.startsWith("http")
+      ? rawLink
+      : `${origin}${rawLink}`
+    : "";
+
+  return { inviteCode: code, fullLink };
+}
+
 export default function InviteLinkModal({
   open,
   conversationId,
   onClose,
 }: InviteLinkModalProps) {
+  const activeConversationId = useChatStore((s) => s.activeConversationId);
+  const targetId = conversationId || activeConversationId || "";
+
   const [inviteLink, setInviteLink] = useState<string>("");
   const [inviteCode, setInviteCode] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchInviteLink = async () => {
+  const fetchInviteLink = useCallback(async () => {
+    if (!targetId) {
+      setError("Không tìm thấy thông tin nhóm. Vui lòng thử lại.");
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
     try {
-      const res = await chatService.getGroupInviteLink(conversationId);
-      if (res && (res as any).ok === false) {
-        setError(
-          (res as any).payload?.message ||
-            "Không thể tải liên kết mời. Vui lòng thử lại."
-        );
+      console.log("[InviteLinkModal] Fetching invite link for:", targetId);
+      const res: any = await chatService.getGroupInviteLink(targetId);
+      console.log("[InviteLinkModal] Response:", res);
+
+      if (!res || res.ok === false || res.statusCode >= 400) {
+        const msg =
+          res?.payload?.message ||
+          res?.message ||
+          "Không thể tải liên kết mời. Vui lòng kiểm tra quyền hạn của bạn.";
+        setError(msg);
         return;
       }
-      const data =
-        (res as any)?.payload?.data ??
-        (res as any)?.payload ??
-        (res as any)?.data;
-      const code = data?.inviteCode ?? "";
-      const rawLink =
-        data?.inviteLink ?? (code ? `/join-group/${code}` : "");
-      const fullLink = rawLink
-        ? rawLink.startsWith("http")
-          ? rawLink
-          : `${window.location.origin}${rawLink}`
-        : "";
+
+      const { inviteCode: code, fullLink } = parseInviteData(res);
+      if (!fullLink) {
+        setError("Không nhận được liên kết mời từ máy chủ.");
+        return;
+      }
+
       setInviteCode(code);
       setInviteLink(fullLink);
-    } catch {
-      setError("Không thể tải liên kết mời. Vui lòng thử lại.");
+    } catch (err: any) {
+      console.error("[InviteLinkModal] Fetch error:", err);
+      setError(err?.message || "Không thể tải liên kết mời. Vui lòng thử lại.");
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [targetId]);
 
   useEffect(() => {
-    if (open && conversationId) {
+    if (open) {
       fetchInviteLink();
+    } else {
+      setError(null);
     }
-  }, [open, conversationId]);
+  }, [open, fetchInviteLink]);
 
   const handleCopy = () => {
     if (!inviteLink) return;
@@ -85,26 +128,34 @@ export default function InviteLinkModal({
 
   const handleReset = async () => {
     if (!confirm("Đặt lại liên kết? Liên kết cũ sẽ không còn hoạt động.")) return;
+    if (!targetId) return;
+
     setIsResetting(true);
     try {
-      const res = await chatService.resetGroupInviteLink(conversationId);
-      const data =
-        (res as any)?.payload?.data ??
-        (res as any)?.payload ??
-        (res as any)?.data;
-      const code = data?.inviteCode ?? "";
-      const rawLink =
-        data?.inviteLink ?? (code ? `/join-group/${code}` : "");
-      const fullLink = rawLink
-        ? rawLink.startsWith("http")
-          ? rawLink
-          : `${window.location.origin}${rawLink}`
-        : "";
-      setInviteCode(code);
-      setInviteLink(fullLink);
-      toast.success("Đã đặt lại liên kết mời");
-    } catch {
-      toast.error("Không thể đặt lại liên kết");
+      console.log("[InviteLinkModal] Resetting invite link for:", targetId);
+      const res: any = await chatService.resetGroupInviteLink(targetId);
+      console.log("[InviteLinkModal] Reset response:", res);
+
+      if (!res || res.ok === false || res.statusCode >= 400) {
+        const msg =
+          res?.payload?.message ||
+          res?.message ||
+          "Chỉ Trưởng hoặc Phó nhóm mới có quyền đặt lại liên kết.";
+        toast.error(msg);
+        return;
+      }
+
+      const { inviteCode: code, fullLink } = parseInviteData(res);
+      if (fullLink) {
+        setInviteCode(code);
+        setInviteLink(fullLink);
+        toast.success("Đã đặt lại liên kết mời");
+      } else {
+        toast.error("Không nhận được liên kết mới từ máy chủ");
+      }
+    } catch (err: any) {
+      console.error("[InviteLinkModal] Reset error:", err);
+      toast.error(err?.message || "Không thể đặt lại liên kết");
     } finally {
       setIsResetting(false);
     }
