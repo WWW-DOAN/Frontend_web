@@ -42,6 +42,13 @@ export default function InviteLinkModal({
     setError(null);
     try {
       const res = await chatService.getGroupInviteLink(conversationId);
+      if (res && (res as any).ok === false) {
+        setError(
+          (res as any).payload?.message ||
+            "Không thể tải liên kết mời. Vui lòng thử lại."
+        );
+        return;
+      }
       const data =
         (res as any)?.payload?.data ??
         (res as any)?.payload ??
