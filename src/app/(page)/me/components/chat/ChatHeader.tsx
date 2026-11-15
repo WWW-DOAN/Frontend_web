@@ -8,10 +8,11 @@ import { Box, IconButton, Typography, useMediaQuery } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import PhoneIcon from "@mui/icons-material/Phone";
 import VideoCallIcon from "@mui/icons-material/VideoCall";
-import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import ViewSidebarOutlinedIcon from "@mui/icons-material/ViewSidebarOutlined";
 import SearchIcon from "@mui/icons-material/Search";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { startCall, startGroupCall } from "@/src/common/action/call.action";
+import { useMemo } from "react";
 
 interface ChatHeaderProps {
   socketConnected: boolean;
@@ -132,22 +133,17 @@ export default function ChatHeader({
   const isOtherOnline = otherUserId ? onlineUserIds.includes(otherUserId) : false;
   const statusOnline = isDirect ? isOtherOnline : socketConnected;
 
-  console.log('[ChatHeader]', {
-    conversationId,
-    type: conversation?.type,
-    isDirect,
-    currentUserId,
-    otherMemberUserId: otherMember?.userId,
-    onlineUserIds,
-    isOtherOnline,
-    statusOnline,
-  });
+  const typingMap = useChatStore((s) => s.typingUsersByConversation);
+  const typingUsers = (conversationId ? typingMap[conversationId] : undefined) || [];
+  const isTyping = typingUsers.length > 0;
 
-  const groupMembers = conversation?.members || [];
-  const groupOnlineCount = groupMembers.filter((m: any) => {
-    const memberId = m.userId || m.id;
-    return memberId === currentUserId || onlineUserIds.includes(memberId);
-  }).length;
+  const memberAvatars = useMemo(() => {
+    if (isDirect) return [];
+    return (members || [])
+      .map((m: any) => resolveMediaUrl(m.avatarUrl))
+      .filter(Boolean) as string[];
+  }, [isDirect, members]);
+
   const totalMembers = conversation?.members?.length || conversation?.memberCount || 0;
 
   const statusText = isDirect
@@ -168,6 +164,7 @@ export default function ChatHeader({
             name={conversation?.name || "Group"}
             size={40}
             isGroup={true}
+            memberAvatars={memberAvatars}
           />
         ) : (
           <AppAvatar
@@ -184,9 +181,20 @@ export default function ChatHeader({
               : (conversation?.name || t("CHAT.DEFAULT_NAME"))}
           </ConvName>
           <ConvStatus>
-            {!isDirect && <StatusDot online={socketConnected} />}
-            {isDirect && <StatusDot online={statusOnline} />}
-            <span>{statusText}</span>
+            {isTyping ? (
+              <>
+                <StatusDot online={true} sx={{ bgcolor: "#0068FF", animation: "pulse 1.2s infinite" }} />
+                <Typography sx={{ fontSize: 12, color: "#0068FF", fontWeight: 500 }}>
+                  {typingUsers[0]?.displayName || "Thành viên"} đang nhập...
+                </Typography>
+              </>
+            ) : (
+              <>
+                {!isDirect && <StatusDot online={socketConnected} />}
+                {isDirect && <StatusDot online={statusOnline} />}
+                <span>{statusText}</span>
+              </>
+            )}
           </ConvStatus>
         </ConvInfo>
       </HeaderLeft>
@@ -198,10 +206,13 @@ export default function ChatHeader({
             <ActionBtn aria-label={t("CHAT.CALL_VIDEO")} onClick={() => conversationId && startCall(conversationId, "VIDEO")}><VideoCallIcon fontSize="small" /></ActionBtn>
           </>
         ) : (
-          <ActionBtn aria-label={t("CHAT.CALL_GROUP")} onClick={() => conversationId && startGroupCall(conversationId)}><PhoneIcon fontSize="small" /></ActionBtn>
+          <>
+            <ActionBtn aria-label={t("CHAT.CALL_GROUP")} onClick={() => conversationId && startGroupCall(conversationId)}><PhoneIcon fontSize="small" /></ActionBtn>
+            <ActionBtn aria-label="Gọi video nhóm" onClick={() => conversationId && startGroupCall(conversationId)}><VideoCallIcon fontSize="small" /></ActionBtn>
+          </>
         )}
         <ActionBtn aria-label={t("CHAT.SEARCH")} onClick={onToggleSearch}><SearchIcon fontSize="small" /></ActionBtn>
-        <ActionBtn aria-label={t("CHAT.INFO")} onClick={onToggleInfo}><InfoOutlinedIcon fontSize="small" /></ActionBtn>
+        <ActionBtn aria-label={t("CHAT.INFO")} onClick={onToggleInfo}><ViewSidebarOutlinedIcon fontSize="small" /></ActionBtn>
       </Actions>
     </HeaderRoot>
   );

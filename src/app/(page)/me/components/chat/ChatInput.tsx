@@ -102,19 +102,22 @@ const InputWrapper = styled(Box)({
   },
 });
 
-const InputField = styled("input")({
+const InputField = styled("textarea")({
   flex: 1,
-  minHeight: 36,
-  maxHeight: 100,
+  minHeight: 24,
+  maxHeight: 120,
   border: "none",
   background: "transparent",
-  padding: "6px 4px",
+  padding: "7px 6px",
   fontSize: 14,
   color: "#0F172A",
   outline: "none",
   resize: "none",
   fontFamily: "inherit",
-  lineHeight: 1.5,
+  lineHeight: 1.45,
+  overflowY: "auto",
+  scrollbarWidth: "none",
+  "&::-webkit-scrollbar": { display: "none" },
   "&::placeholder": {
     color: "#94A3B8",
   },
@@ -143,11 +146,12 @@ const SendBtn = styled(IconButton)({
   height: 34,
   minWidth: 34,
   borderRadius: 10,
-  backgroundColor: "#005AE0",
+  backgroundColor: "#0068FF",
   color: "#FFFFFF",
   flexShrink: 0,
+  transition: "all 0.2s ease",
   "&:hover": {
-    backgroundColor: "#004BB5",
+    backgroundColor: "#005AE0",
   },
   "&:disabled": {
     backgroundColor: "#E5E7EB",
@@ -251,12 +255,21 @@ export default function ChatInput({
   const [mentionFilter, setMentionFilter] = useState<string | null>(null);
   const [mentionIndex, setMentionIndex] = useState(0);
 
-  const inputRef = useRef<HTMLInputElement | null>(null);
+  const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const hasText = !!value.trim();
   const hasAttachments = pendingAttachments.length > 0;
   const lastTypingTime = useRef<number>(0);
+
+  // Auto-resize textarea height
+  useEffect(() => {
+    const el = inputRef.current;
+    if (el) {
+      el.style.height = "auto";
+      el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
+    }
+  }, [value]);
 
   // Active group members for @mention
   const members = (conv?.members || []).filter((m: any) => m.userId !== currentUserId);
@@ -454,7 +467,7 @@ export default function ChatInput({
   };
 
   const handleChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       const val = e.target.value;
       setValue(val);
       checkMention(val, e.target.selectionStart || val.length);
@@ -481,7 +494,7 @@ export default function ChatInput({
     setMentionFilter(null);
   };
 
-  const handleKeyDown: React.KeyboardEventHandler<HTMLInputElement> = (e) => {
+  const handleKeyDown: React.KeyboardEventHandler<HTMLTextAreaElement> = (e) => {
     if (mentionFilter !== null && filteredMembers.length > 0) {
       if (e.key === "ArrowDown") {
         e.preventDefault();
@@ -764,26 +777,81 @@ export default function ChatInput({
           </VoiceRecordingBar>
         ) : (
           <InputWrapper>
-            <Tooltip title={t("CHAT.SEND_IMAGE")} placement="top">
-              <IconBtn
-                onClick={() => imageInputRef.current?.click()}
-                disabled={disabled || uploading}
-                aria-label="send-image"
-              >
-                <ImageOutlinedIcon fontSize="small" />
-              </IconBtn>
-            </Tooltip>
+            {/* 1. Sticker / Emoji on the far left */}
+            <EmojiWrap>
+              <Tooltip title="Sticker / Emoji" placement="top">
+                <IconBtn onClick={() => setOpenEmoji((prev) => !prev)} disabled={disabled}>
+                  <InsertEmoticonRoundedIcon fontSize="small" />
+                </IconBtn>
+              </Tooltip>
+              {openEmoji && (
+                <PickerBox>
+                  <EmojiPicker
+                    onEmojiClick={handleEmojiClick}
+                    width={320}
+                    height={isMobile ? 350 : 400}
+                    previewConfig={{ showPreview: false }}
+                    searchDisabled={false}
+                    skinTonesDisabled
+                  />
+                </PickerBox>
+              )}
+            </EmojiWrap>
 
-            <Tooltip title={t("CHAT.SEND_FILE")} placement="top">
-              <IconBtn
-                onClick={() => fileInputRef.current?.click()}
-                disabled={disabled || uploading}
-                aria-label="send-file"
-              >
-                <AttachFileRoundedIcon fontSize="small" />
-              </IconBtn>
-            </Tooltip>
+            {/* Hidden file & image inputs */}
+            <input
+              ref={imageInputRef}
+              type="file"
+              accept="image/*,video/*"
+              hidden
+              multiple
+              onChange={handleImageChange}
+            />
 
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip"
+              hidden
+              multiple
+              onChange={handleFileChange}
+            />
+
+            {/* 2. Auto-expanding multiline InputField in the center */}
+            <InputField
+              ref={inputRef}
+              rows={1}
+              placeholder={t("CHAT.PLACEHOLDER") || "Nhập tin nhắn..."}
+              value={value}
+              onChange={handleChange}
+              onKeyDown={handleKeyDown}
+              disabled={disabled}
+            />
+
+            {uploading && <CircularProgress size={16} sx={{ mx: 0.5 }} />}
+
+            {/* 3. Micro & Image collapse smoothly when text is typed */}
+            {!hasText && !hasAttachments && (
+              <>
+                <Tooltip title="Ghi âm tin nhắn thoại" placement="top">
+                  <IconBtn onClick={startRecording} disabled={disabled || uploading}>
+                    <MicRoundedIcon fontSize="small" />
+                  </IconBtn>
+                </Tooltip>
+
+                <Tooltip title={t("CHAT.SEND_IMAGE")} placement="top">
+                  <IconBtn
+                    onClick={() => imageInputRef.current?.click()}
+                    disabled={disabled || uploading}
+                    aria-label="send-image"
+                  >
+                    <ImageOutlinedIcon fontSize="small" />
+                  </IconBtn>
+                </Tooltip>
+              </>
+            )}
+
+            {/* 4. More utilities button (...) */}
             <Tooltip title="Thêm tiện ích" placement="top">
               <IconBtn
                 onClick={(e) => setUtilitiesAnchor(e.currentTarget)}
@@ -794,6 +862,14 @@ export default function ChatInput({
               </IconBtn>
             </Tooltip>
 
+            {/* 5. Blue Send Button when typing */}
+            {(hasText || hasAttachments) && (
+              <SendBtn onClick={handleSend} disabled={disabled || uploading}>
+                <SendRoundedIcon fontSize="small" />
+              </SendBtn>
+            )}
+
+            {/* Utilities Menu */}
             <Menu
               anchorEl={utilitiesAnchor}
               open={Boolean(utilitiesAnchor)}
@@ -877,6 +953,21 @@ export default function ChatInput({
                 </MenuItem>
               )}
 
+              <MenuItem
+                onClick={() => {
+                  setUtilitiesAnchor(null);
+                  fileInputRef.current?.click();
+                }}
+              >
+                <ListItemIcon>
+                  <AttachFileRoundedIcon fontSize="small" sx={{ color: "#4B5563" }} />
+                </ListItemIcon>
+                <ListItemText
+                  primary="Gửi tập tin"
+                  primaryTypographyProps={{ fontSize: 13, fontWeight: 500 }}
+                />
+              </MenuItem>
+
               {onOpenShareContact && (
                 <MenuItem
                   onClick={() => {
@@ -909,67 +1000,6 @@ export default function ChatInput({
                 />
               </MenuItem>
             </Menu>
-
-            {uploading && <CircularProgress size={16} sx={{ mx: 1 }} />}
-
-            <input
-              ref={imageInputRef}
-              type="file"
-              accept="image/*,video/*"
-              hidden
-              multiple
-              onChange={handleImageChange}
-            />
-
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip"
-              hidden
-              multiple
-              onChange={handleFileChange}
-            />
-
-            <InputField
-              ref={inputRef}
-              placeholder={t("CHAT.PLACEHOLDER") || "Nhập tin nhắn..."}
-              value={value}
-              onChange={handleChange}
-              onKeyDown={handleKeyDown}
-              disabled={disabled}
-            />
-
-            <EmojiWrap>
-              <Tooltip title="Emoji" placement="top">
-                <IconBtn onClick={() => setOpenEmoji((prev) => !prev)} disabled={disabled}>
-                  <InsertEmoticonRoundedIcon fontSize="small" />
-                </IconBtn>
-              </Tooltip>
-              {openEmoji && (
-                <PickerBox>
-                  <EmojiPicker
-                    onEmojiClick={handleEmojiClick}
-                    width={320}
-                    height={isMobile ? 350 : 400}
-                    previewConfig={{ showPreview: false }}
-                    searchDisabled={false}
-                    skinTonesDisabled
-                  />
-                </PickerBox>
-              )}
-            </EmojiWrap>
-
-            {hasText || hasAttachments ? (
-              <SendBtn onClick={handleSend} disabled={disabled || uploading}>
-                <SendRoundedIcon fontSize="small" />
-              </SendBtn>
-            ) : (
-              <Tooltip title="Ghi âm tin nhắn thoại" placement="top">
-                <IconBtn onClick={startRecording} disabled={disabled || uploading}>
-                  <MicRoundedIcon fontSize="small" />
-                </IconBtn>
-              </Tooltip>
-            )}
           </InputWrapper>
         )}
       </DropZone>

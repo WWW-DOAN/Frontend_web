@@ -1,6 +1,7 @@
 "use client";
 
 import MuiAvatar, { AvatarProps } from "@mui/material/Avatar";
+import Box from "@mui/material/Box";
 import { getInitialsName } from "../../common/helpers/getInitName.helpers";
 import GroupsIcon from "@mui/icons-material/Groups";
 
@@ -13,6 +14,7 @@ interface AppAvatarProps extends Omit<AvatarProps, "src"> {
   size?: number;
   fontSize?: number;
   isGroup?: boolean;
+  memberAvatars?: string[];
 }
 
 export default function AppAvatar({
@@ -24,9 +26,52 @@ export default function AppAvatar({
   children,
   fontSize = 16,
   isGroup = false,
+  memberAvatars,
   ...rest
 }: AppAvatarProps) {
   if (isGroup && !src) {
+    const validAvatars = (memberAvatars || []).filter(Boolean).slice(0, 4);
+
+    if (validAvatars.length >= 2) {
+      const count = validAvatars.length;
+      return (
+        <Box
+          sx={{
+            width: size,
+            height: size,
+            borderRadius: "50%",
+            overflow: "hidden",
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gridTemplateRows: count === 2 ? "1fr" : "1fr 1fr",
+            gap: "1px",
+            backgroundColor: "#CBD5E1",
+            flexShrink: 0,
+            boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+            ...sx,
+          }}
+        >
+          {validAvatars.map((url, idx) => {
+            const isSingleBottom = count === 3 && idx === 2;
+            return (
+              <Box
+                key={idx}
+                component="img"
+                src={url}
+                alt={alt ?? name ?? ""}
+                sx={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                  gridColumn: isSingleBottom ? "span 2" : "auto",
+                }}
+              />
+            );
+          })}
+        </Box>
+      );
+    }
+
     return (
       <MuiAvatar
         alt={alt ?? name ?? ""}

@@ -56,6 +56,8 @@ import PlaceIcon from "@mui/icons-material/Place";
 import EventIcon from "@mui/icons-material/Event";
 import AutorenewIcon from "@mui/icons-material/Autorenew";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
+import KeyIcon from "@mui/icons-material/Key";
+import FavoriteRoundedIcon from "@mui/icons-material/FavoriteRounded";
 import { buildS3Url } from "@/src/common/components/MediaPreviewModal";
 import type { ConversationMemberDto } from "@/src/common/interface/chat-interface";
 
@@ -86,6 +88,10 @@ interface MessageItemProps {
   deliveryStatus?: "sending" | "sent" | "delivered" | "read" | "failed";
   isEdited?: boolean;
   isGrouped?: boolean;
+  isFirstInGroup?: boolean;
+  isMiddleInGroup?: boolean;
+  isLastInGroup?: boolean;
+  senderRole?: string;
   replyTo?: {
     messageId: string;
     body: string;
@@ -108,6 +114,29 @@ interface MessageItemProps {
 }
 
 const REACTION_EMOJIS = ["👍", "❤️", "😂", "😮", "😢", "😡"];
+
+const SENDER_COLORS = [
+  "#2563EB", // Blue
+  "#059669", // Emerald
+  "#D97706", // Amber
+  "#7C3AED", // Violet
+  "#DB2777", // Pink
+  "#0891B2", // Cyan
+  "#EA580C", // Orange
+  "#4F46E5", // Indigo
+  "#16A34A", // Green
+  "#9333EA", // Purple
+];
+
+const getMemberColor = (id?: string) => {
+  if (!id) return "#2563EB";
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) {
+    hash = (hash << 5) - hash + id.charCodeAt(i);
+    hash |= 0;
+  }
+  return SENDER_COLORS[Math.abs(hash) % SENDER_COLORS.length];
+};
 
 const EmojiPickerBox = styled(Paper)({
   display: "flex",
@@ -148,6 +177,10 @@ const MessageRow = styled(Box, {
     visibility: "visible",
     transform: "translateY(0px)",
   },
+  "&:hover .quick-react-btn": {
+    opacity: 1,
+    visibility: "visible",
+  },
 }));
 
 const MessageAvatar = styled(Avatar)({
@@ -183,32 +216,46 @@ const flashAnimation = keyframes`
 
 const Bubble = styled(Box, {
   shouldForwardProp: (prop) =>
-    prop !== "mine" && prop !== "isDeleted",
+    prop !== "mine" &&
+    prop !== "isDeleted" &&
+    prop !== "isFirstInGroup" &&
+    prop !== "isMiddleInGroup" &&
+    prop !== "isLastInGroup",
 })<{
   mine?: boolean;
   isDeleted?: boolean;
-}>(({ mine, isDeleted }) => ({
-  position: "relative",
-  maxWidth: "560px",
-  minWidth: 70,
-  padding: "9px 12px",
-  borderRadius: mine
-    ? "18px 18px 4px 18px"
-    : "18px 18px 18px 4px",
-  background: mine ? "#d9fdd3" : "#ffffff",
-  border: mine
-    ? "1px solid #c9f1c3"
-    : "1px solid #E5E7EB",
-  color: "#111827",
-  boxShadow: "0 1px 2px rgba(0,0,0,0.06)",
-  opacity: isDeleted ? 0.6 : 1,
-  fontStyle: isDeleted ? "italic" : "normal",
-  transition: "background-color 0.3s ease, border-color 0.3s ease",
+  isFirstInGroup?: boolean;
+  isMiddleInGroup?: boolean;
+  isLastInGroup?: boolean;
+}>(({ mine, isDeleted, isFirstInGroup, isMiddleInGroup, isLastInGroup }) => {
+  let borderRadius = mine ? "18px 18px 4px 18px" : "18px 18px 18px 4px";
+  if (isFirstInGroup && !isLastInGroup) {
+    borderRadius = mine ? "18px 18px 4px 18px" : "18px 18px 18px 4px";
+  } else if (isMiddleInGroup) {
+    borderRadius = mine ? "18px 4px 4px 18px" : "4px 18px 18px 4px";
+  } else if (!isFirstInGroup && isLastInGroup) {
+    borderRadius = mine ? "18px 4px 18px 18px" : "4px 18px 18px 18px";
+  }
 
-  "&.flash-active": {
-    animation: `${flashAnimation} 1.5s ease-in-out`,
-  },
-}));
+  return {
+    position: "relative",
+    maxWidth: "560px",
+    minWidth: 70,
+    padding: "9px 12px",
+    borderRadius,
+    background: mine ? "#E5EFFF" : "#ffffff",
+    border: mine ? "1px solid #C7D9F8" : "1px solid #E5E7EB",
+    color: "#111827",
+    boxShadow: "0 1px 2px rgba(0,0,0,0.06)",
+    opacity: isDeleted ? 0.6 : 1,
+    fontStyle: isDeleted ? "italic" : "normal",
+    transition: "background-color 0.2s ease, border-color 0.2s ease",
+
+    "&.flash-active": {
+      animation: `${flashAnimation} 1.5s ease-in-out`,
+    },
+  };
+});
 
 const SenderName = styled(Typography)({
   fontSize: 12,
@@ -646,6 +693,10 @@ const MessageItem: React.FC<MessageItemProps> = ({
   deliveryStatus = "sent",
   isEdited = false,
   isGrouped = false,
+  isFirstInGroup,
+  isMiddleInGroup,
+  isLastInGroup,
+  senderRole,
   replyTo,
   attachments = [],
   reactions = [],
@@ -823,12 +874,58 @@ const MessageItem: React.FC<MessageItemProps> = ({
 
   return (
     <MessageRow mine={isOwn} isGrouped={isGrouped}>
-      {!isOwn && !isGrouped ? (
-        <MessageAvatar src={sender?.avatar}>
-          {sender?.name?.charAt(0).toUpperCase()}
-        </MessageAvatar>
+      {!isOwn && (isFirstInGroup ?? !isGrouped) ? (
+        <Box sx={{ position: "relative", flexShrink: 0, alignSelf: "flex-end", mb: 0.25 }}>
+          <MessageAvatar src={sender?.avatar}>
+            {sender?.name?.charAt(0).toUpperCase()}
+          </MessageAvatar>
+          {senderRole === "OWNER" && (
+            <Tooltip title="Trưởng nhóm">
+              <Box
+                sx={{
+                  position: "absolute",
+                  bottom: -2,
+                  right: -2,
+                  width: 15,
+                  height: 15,
+                  borderRadius: "50%",
+                  bgcolor: "#FEF3C7",
+                  border: "1.5px solid #FFFFFF",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  boxShadow: "0 1px 2px rgba(0,0,0,0.15)",
+                }}
+              >
+                <KeyIcon sx={{ fontSize: 9, color: "#D97706" }} />
+              </Box>
+            </Tooltip>
+          )}
+          {senderRole === "ADMIN" && (
+            <Tooltip title="Phó nhóm">
+              <Box
+                sx={{
+                  position: "absolute",
+                  bottom: -2,
+                  right: -2,
+                  width: 15,
+                  height: 15,
+                  borderRadius: "50%",
+                  bgcolor: "#F1F5F9",
+                  border: "1.5px solid #FFFFFF",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  boxShadow: "0 1px 2px rgba(0,0,0,0.15)",
+                }}
+              >
+                <KeyIcon sx={{ fontSize: 9, color: "#64748B" }} />
+              </Box>
+            </Tooltip>
+          )}
+        </Box>
       ) : (
-        !isOwn && <Box width={32} />
+        !isOwn && <Box sx={{ width: 32, flexShrink: 0 }} />
       )}
 
       <BubbleWrap mine={isOwn}>
@@ -906,10 +1003,14 @@ const MessageItem: React.FC<MessageItemProps> = ({
         <Bubble
           mine={isOwn}
           isDeleted={isDeleted}
+          isFirstInGroup={isFirstInGroup}
+          isMiddleInGroup={isMiddleInGroup}
+          isLastInGroup={isLastInGroup}
           className="message-bubble"
+          onDoubleClick={() => onReply?.()}
         >
-          {!isOwn && !isGrouped && sender && (
-            <SenderName>
+          {!isOwn && (isFirstInGroup ?? !isGrouped) && sender && (
+            <SenderName sx={{ color: getMemberColor(sender.id) }}>
               {sender.name}
             </SenderName>
           )}
@@ -1507,6 +1608,41 @@ const MessageItem: React.FC<MessageItemProps> = ({
                 </Tooltip>
               ))}
             </ReactionWrap>
+          )}
+
+          {onReact && !isDeleted && (
+            <Tooltip title="Thả cảm xúc" placement="top">
+              <IconButton
+                className="quick-react-btn"
+                size="small"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onReact("❤️");
+                }}
+                onMouseEnter={(e) => {
+                  setEmojiAnchorEl(e.currentTarget);
+                }}
+                sx={{
+                  position: "absolute",
+                  bottom: -10,
+                  right: isOwn ? 8 : -8,
+                  width: 22,
+                  height: 22,
+                  bgcolor: "#FFFFFF",
+                  border: "1px solid #E5E7EB",
+                  borderRadius: "50%",
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.15)",
+                  opacity: 0,
+                  visibility: "hidden",
+                  transition: "all 0.15s ease",
+                  p: 0,
+                  zIndex: 2,
+                  "&:hover": { bgcolor: "#F8FAFC", transform: "scale(1.15)" },
+                }}
+              >
+                <FavoriteRoundedIcon sx={{ fontSize: 13, color: "#EF4444" }} />
+              </IconButton>
+            </Tooltip>
           )}
         </Bubble>
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { Box, CircularProgress, Typography } from "@mui/material";
+import { Box, CircularProgress, Typography, Avatar, Tooltip } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { useMemo } from "react";
 import { PaginationState, UiMessage, AttachmentDto } from "@/src/common/interface/chat-interface";
@@ -33,8 +33,8 @@ const MessagesWrap = styled(Box, {
 })<{ showScrollbar: boolean }>(({ showScrollbar }) => ({
   flex: 1,
   overflowY: "auto",
-  backgroundColor: "#FFFFFF",
-  padding: "8px 0",
+  backgroundColor: "#E2E9F1",
+  padding: "10px 0",
   display: "flex",
   flexDirection: "column",
   scrollbarGutter: "stable",
@@ -81,11 +81,12 @@ const DateSeparator = styled(Box)({
 
 const DateLabel = styled(Typography)({
   fontSize: 12,
-  color: "#94A3B8",
-  background: "#fff",
-  padding: "2px 12px",
-  borderRadius: 10,
-  border: "1px solid #E5E7EB",
+  fontWeight: 500,
+  color: "#475569",
+  background: "#CBD5E1",
+  padding: "3px 14px",
+  borderRadius: 12,
+  boxShadow: "0 1px 2px rgba(0,0,0,0.06)",
 });
 
 const formatDateLabel = (timestamp: number): string => {
@@ -145,6 +146,23 @@ export default function MessageList({
   const convFromList = listConversation.find((c) => c.id === conversationId);
   const members = convDetail?.members || convFromList?.members || [];
 
+  const memberRolesMap = useMemo(() => {
+    const map = new Map<string, string>();
+    (members || []).forEach((m: any) => {
+      const uid = m.userId || m.id;
+      if (uid) {
+        map.set(uid, (m.role || "MEMBER").toUpperCase());
+      }
+    });
+    return map;
+  }, [members]);
+
+  const otherMembers = useMemo(() => {
+    return (members || []).filter((m: any) => (m.userId || m.id) !== currentUserId);
+  }, [members, currentUserId]);
+
+  const GROUP_TIME_LIMIT_MS = 2 * 60 * 1000; // 2 minutes
+
   const resolveSenderName = (msg: UiMessage): string => {
     if (msg.senderName && msg.senderName !== t("CHAT.USER")) return msg.senderName;
     const member = members?.find((m) => m.userId === msg.senderId);
@@ -159,12 +177,44 @@ export default function MessageList({
     return prevDate !== currDate;
   };
 
-  const shouldGroupWithPrev = (msg: UiMessage, index: number): boolean => {
-    if (index === 0) return false;
-    const prev = messages[index - 1];
-    if (msg.senderId !== prev.senderId) return false;
-    const diff = msg.createdAt - prev.createdAt;
-    return diff < 300000;
+  const getGroupingInfo = (msg: UiMessage, index: number) => {
+    const prev = index > 0 ? messages[index - 1] : null;
+    const next = index < messages.length - 1 ? messages[index + 1] : null;
+
+    const prevIsSystem = prev ? (prev.type === "system" || prev.message_type === "system") : false;
+    const nextIsSystem = next ? (next.type === "system" || next.message_type === "system") : false;
+
+    const isSameDayAsPrev = prev
+      ? new Date(prev.createdAt).toDateString() === new Date(msg.createdAt).toDateString()
+      : false;
+    const isSameDayAsNext = next
+      ? new Date(next.createdAt).toDateString() === new Date(msg.createdAt).toDateString()
+      : false;
+
+    const isGroupedWithPrev =
+      !!prev &&
+      !prevIsSystem &&
+      isSameDayAsPrev &&
+      prev.senderId === msg.senderId &&
+      msg.createdAt - prev.createdAt <= GROUP_TIME_LIMIT_MS;
+
+    const isGroupedWithNext =
+      !!next &&
+      !nextIsSystem &&
+      isSameDayAsNext &&
+      next.senderId === msg.senderId &&
+      next.createdAt - msg.createdAt <= GROUP_TIME_LIMIT_MS;
+
+    const isFirstInGroup = !isGroupedWithPrev;
+    const isLastInGroup = !isGroupedWithNext;
+    const isMiddleInGroup = isGroupedWithPrev && isGroupedWithNext;
+
+    return {
+      isFirstInGroup,
+      isLastInGroup,
+      isMiddleInGroup,
+      isGrouped: isGroupedWithPrev,
+    };
   };
 
   return (
@@ -202,7 +252,8 @@ export default function MessageList({
             }
 
             const mine = msg.senderId === currentUserId;
-            const grouped = shouldGroupWithPrev(msg, index);
+            const grouping = getGroupingInfo(msg, index);
+            const isLastMessage = index === messages.length - 1;
 
             return (
               <Box key={msg.messageId} id={`msg-${msg.messageId}`}>
@@ -232,7 +283,11 @@ export default function MessageList({
                   isDeleted={msg.isDeleted}
                   isPinned={isMessagePinned(msg.messageId)}
                   isEdited={Boolean(msg.editedAt)}
-                  isGrouped={grouped}
+                  isGrouped={grouping.isGrouped}
+                  isFirstInGroup={grouping.isFirstInGroup}
+                  isMiddleInGroup={grouping.isMiddleInGroup}
+                  isLastInGroup={grouping.isLastInGroup}
+                  senderRole={memberRolesMap.get(msg.senderId)}
                   deliveryStatus="read"
                   replyTo={msg.replyTo || null}
                   attachments={msg.attachments}
@@ -247,6 +302,54 @@ export default function MessageList({
                   onDelete={() => onDeleteMessage(conversationId, msg.messageId)}
                   onDeleteForMe={() => deleteMessageForMe(conversationId, msg.messageId)}
                 />
+
+                {isLastMessage && otherMembers.length > 0 && (
+                  <Box
+                    sx={{
+                      display: "flex",
+                      justifyContent: mine ? "flex-end" : "flex-start",
+                      pr: mine ? 2 : 0,
+                      pl: mine ? 0 : 6,
+                      mt: 0.5,
+                      mb: 1,
+                      alignItems: "center",
+                      gap: 0.5,
+                    }}
+                  >
+                    <Typography sx={{ fontSize: 11, color: "#64748B", fontWeight: 500, mr: 0.5 }}>
+                      {t("CHAT.SEEN") || "Đã xem"}
+                    </Typography>
+                    <Box sx={{ display: "flex", alignItems: "center" }}>
+                      {otherMembers.slice(0, 5).map((m: any, idx: number) => {
+                        const mName = m.displayName || m.fullName || m.username || "Thành viên";
+                        return (
+                          <Tooltip key={m.userId || idx} title={mName}>
+                            <Avatar
+                              src={resolveMediaUrl(m.avatarUrl) || undefined}
+                              sx={{
+                                width: 16,
+                                height: 16,
+                                fontSize: 9,
+                                border: "1.5px solid #FFFFFF",
+                                ml: idx > 0 ? "-4px" : 0,
+                                boxShadow: "0 1px 2px rgba(0,0,0,0.15)",
+                                bgcolor: "#0068FF",
+                                color: "#FFFFFF",
+                              }}
+                            >
+                              {mName.charAt(0).toUpperCase()}
+                            </Avatar>
+                          </Tooltip>
+                        );
+                      })}
+                      {otherMembers.length > 5 && (
+                        <Typography sx={{ fontSize: 10, color: "#64748B", ml: 0.5, fontWeight: 600 }}>
+                          +{otherMembers.length - 5}
+                        </Typography>
+                      )}
+                    </Box>
+                  </Box>
+                )}
               </Box>
             );
           })}
