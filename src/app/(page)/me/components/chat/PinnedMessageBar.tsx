@@ -10,6 +10,9 @@ import InsertDriveFileOutlinedIcon from "@mui/icons-material/InsertDriveFileOutl
 import ImageIcon from "@mui/icons-material/Image";
 import AudiotrackIcon from "@mui/icons-material/Audiotrack";
 import VideocamIcon from "@mui/icons-material/Videocam";
+import AlarmIcon from "@mui/icons-material/Alarm";
+import DescriptionIcon from "@mui/icons-material/Description";
+import AssignmentTurnedInIcon from "@mui/icons-material/AssignmentTurnedIn";
 import { useTrans } from "@/src/common/utilities/hook/trans";
 
 const PinnedBar = styled(Box)({
@@ -142,6 +145,9 @@ function hasOnlyImages(attachments: Attachment[]): boolean {
 }
 
 function getAttachmentTypeIcon(type?: string) {
+  if (type === "reminder") return <AlarmIcon sx={{ fontSize: 18, color: "#D97706", flexShrink: 0 }} />;
+  if (type === "note") return <DescriptionIcon sx={{ fontSize: 18, color: "#2563EB", flexShrink: 0 }} />;
+  if (type === "todo") return <AssignmentTurnedInIcon sx={{ fontSize: 18, color: "#7C3AED", flexShrink: 0 }} />;
   if (type?.startsWith?.("image")) return <ImageIcon sx={{ fontSize: 18, color: "#1565C0", flexShrink: 0 }} />;
   if (type?.startsWith?.("video")) return <VideocamIcon sx={{ fontSize: 18, color: "#1565C0", flexShrink: 0 }} />;
   if (type?.startsWith?.("audio")) return <AudiotrackIcon sx={{ fontSize: 18, color: "#1565C0", flexShrink: 0 }} />;
@@ -225,6 +231,45 @@ export default function PinnedMessageBar({
   const renderSinglePreview = (msg: PinnedMessage) => {
     const text = msg.content || msg.body || msg.message?.body || "";
     const attachments = getAttachments(msg);
+
+    const reminder = attachments.find((a: any) => a.type === "reminder" || (a as any).content_type === "reminder");
+    if (reminder) {
+      const meta = (reminder as any).metadata || {};
+      return (
+        <Box sx={{ display: "flex", alignItems: "center", gap: 0.8, minWidth: 0 }}>
+          <AlarmIcon sx={{ fontSize: 16, color: "#D97706", flexShrink: 0 }} />
+          <PinnedText sx={{ color: "#B45309", fontWeight: 600 }}>
+            Nhắc hẹn: {meta.title || reminder.name || text} {meta.dateTime ? `(${meta.dateTime})` : ""}
+          </PinnedText>
+        </Box>
+      );
+    }
+
+    const note = attachments.find((a: any) => a.type === "note" || (a as any).content_type === "note");
+    if (note) {
+      const meta = (note as any).metadata || {};
+      return (
+        <Box sx={{ display: "flex", alignItems: "center", gap: 0.8, minWidth: 0 }}>
+          <DescriptionIcon sx={{ fontSize: 16, color: "#2563EB", flexShrink: 0 }} />
+          <PinnedText sx={{ color: "#1D4ED8", fontWeight: 600 }}>
+            Ghi chú: {meta.title || note.name || text}
+          </PinnedText>
+        </Box>
+      );
+    }
+
+    const todo = attachments.find((a: any) => a.type === "todo" || (a as any).content_type === "todo");
+    if (todo) {
+      const meta = (todo as any).metadata || {};
+      return (
+        <Box sx={{ display: "flex", alignItems: "center", gap: 0.8, minWidth: 0 }}>
+          <AssignmentTurnedInIcon sx={{ fontSize: 16, color: "#7C3AED", flexShrink: 0 }} />
+          <PinnedText sx={{ color: "#6D28D9", fontWeight: 600 }}>
+            Việc cần làm: {meta.title || todo.name || text}
+          </PinnedText>
+        </Box>
+      );
+    }
 
     if (text) {
       return <PinnedText>{text}</PinnedText>;

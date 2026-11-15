@@ -15,6 +15,8 @@ import {
   Select,
   FormControl,
   InputLabel,
+  FormControlLabel,
+  Checkbox,
 } from "@mui/material";
 import { Close, Alarm } from "@mui/icons-material";
 import { useState } from "react";
@@ -23,7 +25,7 @@ import { ChatAttachmentPayload } from "@/src/common/interface/media-interface";
 interface CreateReminderModalProps {
   open: boolean;
   onClose: () => void;
-  onCreated: (content: string, attachments: ChatAttachmentPayload[]) => void;
+  onCreated: (content: string, attachments: ChatAttachmentPayload[], pin?: boolean) => void;
 }
 
 export default function CreateReminderModal({
@@ -36,6 +38,7 @@ export default function CreateReminderModal({
   const [time, setTime] = useState("09:00");
   const [repeat, setRepeat] = useState("NONE");
   const [note, setNote] = useState("");
+  const [pinToTop, setPinToTop] = useState(true);
 
   const handleCreate = () => {
     if (!title.trim()) return;
@@ -56,13 +59,15 @@ export default function CreateReminderModal({
         repeat,
         repeatLabel: repeatLabels[repeat] || "Không lặp",
         note: note.trim(),
+        pinToTop,
       },
     };
 
     const messageText = `Nhắc hẹn: ${title.trim()} (${date} lúc ${time} - ${repeatLabels[repeat]})`;
-    onCreated(messageText, [reminderPayload]);
+    onCreated(messageText, [reminderPayload], pinToTop);
     setTitle("");
     setNote("");
+    setPinToTop(true);
     onClose();
   };
 
@@ -129,6 +134,12 @@ export default function CreateReminderModal({
           minRows={2}
           value={note}
           onChange={(e) => setNote(e.target.value)}
+        />
+
+        <FormControlLabel
+          control={<Checkbox checked={pinToTop} onChange={(e) => setPinToTop(e.target.checked)} color="primary" />}
+          label={<Typography fontSize={13}>Ghim lên đầu cuộc trò chuyện</Typography>}
+          sx={{ mt: 0.5 }}
         />
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2 }}>

@@ -26,6 +26,7 @@ import {
   initChat,
   loadMoreMessages,
   openConversation,
+  pinMessage,
   sendMessage,
   unpinMessage,
 } from "@/src/common/action/chat.action";
@@ -560,16 +561,22 @@ export default function ChatPanel({
       <CreateReminderModal
         open={showCreateReminderModal}
         onClose={() => setShowCreateReminderModal(false)}
-        onCreated={(content, attachments) => {
-          sendMessage(conversationId, content, attachments);
+        onCreated={async (content, attachments, pin = true) => {
+          const sent: any = await sendMessage(conversationId, content, attachments);
+          if (pin && sent?.messageId && sent?.createdAt) {
+            await pinMessage(conversationId, sent.messageId, sent.createdAt);
+          }
         }}
       />
 
       <CreateNoteModal
         open={showCreateNoteModal}
         onClose={() => setShowCreateNoteModal(false)}
-        onCreated={(content, attachments) => {
-          sendMessage(conversationId, content, attachments);
+        onCreated={async (content, attachments, pin = true) => {
+          const sent: any = await sendMessage(conversationId, content, attachments);
+          if (pin && sent?.messageId && sent?.createdAt) {
+            await pinMessage(conversationId, sent.messageId, sent.createdAt);
+          }
         }}
       />
 
