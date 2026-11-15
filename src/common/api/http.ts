@@ -184,10 +184,10 @@ export const request = async <T = any>(
         const payload = await getResponsePayload(res);
 
         if (res.ok) {
-          return { statusCode: res.status, ok: true, payload: payload as T };
+          return { statusCode: res.status, ok: true, payload: payload as T, data: payload as T };
         }
 
-        return { statusCode: res.status, ok: false, payload: payload as T };
+        return { statusCode: res.status, ok: false, payload: payload as T, data: payload as T };
       } catch (err: any) {
         clearTimeout(timeoutId);
         externalSignal?.removeEventListener("abort", abortFromCaller);
@@ -210,6 +210,7 @@ export const request = async <T = any>(
       statusCode: 500,
       ok: false,
       payload: { message: "Request failed after retries" } as any,
+      data: { message: "Request failed after retries" } as any,
     };
   } catch (err: any) {
     console.error("[HTTP] Request error:", err);
@@ -219,6 +220,7 @@ export const request = async <T = any>(
       statusCode: 500,
       ok: false,
       payload: { message: err?.message ?? "Network error" } as any,
+      data: { message: err?.message ?? "Network error" } as any,
     };
   }
 };

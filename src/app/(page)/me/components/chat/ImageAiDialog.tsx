@@ -60,8 +60,10 @@ export const ImageAiDialog: React.FC<ImageAiDialogProps> = ({
         prompt: textPrompt.trim() || undefined,
       });
 
-      if (res.data?.success && res.data.data?.answer) {
-        setResult(res.data.data.answer);
+      const rawData = (res as any)?.data ?? (res as any)?.payload;
+      const innerData = rawData?.data ?? rawData;
+      if (innerData?.answer) {
+        setResult(innerData.answer);
       } else {
         toast.error("Không thể phân tích ảnh lúc này");
       }

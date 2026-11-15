@@ -794,13 +794,16 @@ const MessageItem: React.FC<MessageItemProps> = ({
     setShowTranslation(true);
     try {
       const res = await chatbotService.translate({ text: content });
-      if (res.data?.success && res.data.data?.translatedText) {
-        setTranslation(res.data.data.translatedText);
+      const rawData = (res as any)?.data ?? (res as any)?.payload;
+      const innerData = rawData?.data ?? rawData;
+      if (innerData?.translatedText) {
+        setTranslation(innerData.translatedText);
       } else {
-        setShowTranslation(false);
+        setTranslation(rawData?.message || "Không thể dịch tin nhắn này lúc này.");
       }
-    } catch {
-      setShowTranslation(false);
+    } catch (err: any) {
+      console.error("[Translate] Error:", err);
+      setTranslation("Lỗi khi kết nối dịch thuật: " + (err?.message || "Vui lòng thử lại"));
     } finally {
       setTranslating(false);
     }

@@ -59,8 +59,9 @@ export default function LinkPreviewCard({ url, isOwn }: LinkPreviewCardProps) {
       .getLinkPreview(url)
       .then((res) => {
         if (!isMounted) return;
-        if (res.data?.success && res.data.data) {
-          const preview = res.data.data;
+        const rawData = (res as any)?.data ?? (res as any)?.payload;
+        const preview = rawData?.data ?? rawData;
+        if (preview && (preview.title || preview.description || preview.image)) {
           previewCache.set(url, preview);
           setData(preview);
         }
