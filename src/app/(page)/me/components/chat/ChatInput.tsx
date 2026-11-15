@@ -86,10 +86,11 @@ const InputWrapper = styled(Box)({
   display: "flex",
   alignItems: "center",
   background: "#F0F2F5",
-  borderRadius: 16,
+  borderRadius: 20,
   border: "1px solid #E5E7EB",
-  padding: "2px 8px",
-  gap: 1,
+  padding: "3px 6px",
+  gap: 4,
+  boxSizing: "border-box",
   transition: "border-color 0.2s ease, box-shadow 0.2s ease",
   "&:focus-within": {
     borderColor: "#005AE0",
@@ -97,58 +98,66 @@ const InputWrapper = styled(Box)({
     background: "#FFFFFF",
   },
   "@media (max-width: 767px)": {
-    padding: "0 4px",
-    gap: 0,
+    padding: "2px 4px",
+    gap: 2,
   },
 });
 
 const InputField = styled("textarea")({
   flex: 1,
-  minHeight: 24,
+  boxSizing: "border-box",
+  height: 36,
+  minHeight: 36,
   maxHeight: 120,
   border: "none",
   background: "transparent",
-  padding: "7px 6px",
+  padding: "8px 8px",
   fontSize: 14,
   color: "#0F172A",
   outline: "none",
   resize: "none",
   fontFamily: "inherit",
-  lineHeight: 1.45,
+  lineHeight: "20px",
   overflowY: "auto",
   scrollbarWidth: "none",
+  display: "block",
+  margin: 0,
   "&::-webkit-scrollbar": { display: "none" },
   "&::placeholder": {
     color: "#94A3B8",
+    opacity: 1,
+    lineHeight: "20px",
   },
 });
 
 const IconBtn = styled(IconButton)({
-  width: 34,
-  height: 34,
-  minWidth: 34,
+  width: 36,
+  height: 36,
+  minWidth: 36,
   color: "#64748B",
   borderRadius: 10,
   flexShrink: 0,
+  padding: "6px",
   "&:hover": {
     background: "rgba(0, 0, 0, 0.06)",
     color: "#005AE0",
   },
   "@media (max-width: 767px)": {
-    width: 40,
-    height: 40,
-    minWidth: 40,
+    width: 36,
+    height: 36,
+    minWidth: 36,
   },
 });
 
 const SendBtn = styled(IconButton)({
-  width: 34,
-  height: 34,
-  minWidth: 34,
+  width: 36,
+  height: 36,
+  minWidth: 36,
   borderRadius: 10,
   backgroundColor: "#0068FF",
   color: "#FFFFFF",
   flexShrink: 0,
+  padding: "6px",
   transition: "all 0.2s ease",
   "&:hover": {
     backgroundColor: "#005AE0",
@@ -158,14 +167,18 @@ const SendBtn = styled(IconButton)({
     color: "#94A3B8",
   },
   "@media (max-width: 767px)": {
-    width: 40,
-    height: 40,
-    minWidth: 40,
+    width: 36,
+    height: 36,
+    minWidth: 36,
   },
 });
 
 const EmojiWrap = styled(Box)({
   position: "relative",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  flexShrink: 0,
 });
 
 const PickerBox = styled(Box)({
@@ -267,7 +280,8 @@ export default function ChatInput({
     const el = inputRef.current;
     if (el) {
       el.style.height = "auto";
-      el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
+      const targetHeight = !value.trim() ? 36 : Math.min(Math.max(el.scrollHeight, 36), 120);
+      el.style.height = `${targetHeight}px`;
     }
   }, [value]);
 
@@ -776,29 +790,7 @@ export default function ChatInput({
             </Tooltip>
           </VoiceRecordingBar>
         ) : (
-          <InputWrapper>
-            {/* 1. Sticker / Emoji on the far left */}
-            <EmojiWrap>
-              <Tooltip title="Sticker / Emoji" placement="top">
-                <IconBtn onClick={() => setOpenEmoji((prev) => !prev)} disabled={disabled}>
-                  <InsertEmoticonRoundedIcon fontSize="small" />
-                </IconBtn>
-              </Tooltip>
-              {openEmoji && (
-                <PickerBox>
-                  <EmojiPicker
-                    onEmojiClick={handleEmojiClick}
-                    width={320}
-                    height={isMobile ? 350 : 400}
-                    previewConfig={{ showPreview: false }}
-                    searchDisabled={false}
-                    skinTonesDisabled
-                  />
-                </PickerBox>
-              )}
-            </EmojiWrap>
-
-            {/* Hidden file & image inputs */}
+          <>
             <input
               ref={imageInputRef}
               type="file"
@@ -817,16 +809,38 @@ export default function ChatInput({
               onChange={handleFileChange}
             />
 
-            {/* 2. Auto-expanding multiline InputField in the center */}
-            <InputField
-              ref={inputRef}
-              rows={1}
-              placeholder={t("CHAT.PLACEHOLDER") || "Nhập tin nhắn..."}
-              value={value}
-              onChange={handleChange}
-              onKeyDown={handleKeyDown}
-              disabled={disabled}
-            />
+            <InputWrapper>
+              {/* 1. Sticker / Emoji on the far left */}
+              <EmojiWrap>
+                <Tooltip title="Sticker / Emoji" placement="top">
+                  <IconBtn onClick={() => setOpenEmoji((prev) => !prev)} disabled={disabled}>
+                    <InsertEmoticonRoundedIcon fontSize="small" />
+                  </IconBtn>
+                </Tooltip>
+                {openEmoji && (
+                  <PickerBox>
+                    <EmojiPicker
+                      onEmojiClick={handleEmojiClick}
+                      width={320}
+                      height={isMobile ? 350 : 400}
+                      previewConfig={{ showPreview: false }}
+                      searchDisabled={false}
+                      skinTonesDisabled
+                    />
+                  </PickerBox>
+                )}
+              </EmojiWrap>
+
+              {/* 2. Auto-expanding multiline InputField in the center */}
+              <InputField
+                ref={inputRef}
+                rows={1}
+                placeholder={t("CHAT.PLACEHOLDER") || "Nhập tin nhắn..."}
+                value={value}
+                onChange={handleChange}
+                onKeyDown={handleKeyDown}
+                disabled={disabled}
+              />
 
             {uploading && <CircularProgress size={16} sx={{ mx: 0.5 }} />}
 
@@ -1001,7 +1015,8 @@ export default function ChatInput({
               </MenuItem>
             </Menu>
           </InputWrapper>
-        )}
+        </>
+      )}
       </DropZone>
     </ChatInputContainer>
   );
