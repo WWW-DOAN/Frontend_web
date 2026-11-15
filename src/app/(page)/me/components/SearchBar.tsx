@@ -114,9 +114,17 @@ const SearchBar = ({ onResultSelect, onAddFriend, onCreateGroup }: SearchBarProp
     const [searchError, setSearchError] = useState<string | null>(null);
     const [openAddFriendDialog, setOpenAddFriendDialog] = useState(false);
     const debounceSearch = useDebounce(searchValue, 300);
-    const { listConversation } = useChatStore();
+    const { listConversation, userPinCode, setPinUnlocked } = useChatStore();
     const { authData } = useAuthStore();
     const currentUserId = authData?.data?.user?.id;
+
+    useEffect(() => {
+        if (userPinCode && searchValue.trim() === userPinCode) {
+            setPinUnlocked(true);
+            setSearchValue("");
+            setFocusOnSearch(false);
+        }
+    }, [searchValue, userPinCode, setPinUnlocked]);
 
     const fetchFriends = useFriendStore((s) => s.fetchFriends);
     const fetchPendingRequests = useFriendStore((s) => s.fetchPendingRequests);

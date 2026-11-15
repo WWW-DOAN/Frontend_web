@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useCallback, useEffect } from "react";
+import { useRef, useState, useCallback, useEffect, useMemo } from "react";
 import {
   Box,
   IconButton,
@@ -18,7 +18,10 @@ import {
   Menu,
   MenuItem,
   ListItemIcon,
+  Chip,
 } from "@mui/material";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+import { chatbotService } from "@/src/common/service/chatbot-service";
 import { sendTyping, sendStopTyping } from "@/src/common/action/chat.action";
 import { styled, keyframes } from "@mui/material/styles";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
@@ -256,6 +259,71 @@ export default function ChatInput({
   const [pendingAttachments, setPendingAttachments] = useState<ChatAttachmentPayload[]>([]);
   const [uploading, setUploading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+
+  const effectiveConvId = conversationId || activeConversationId;
+
+  // Restore draft when conversation changes
+  useEffect(() => {
+    if (!effectiveConvId) return;
+    if (typeof window !== "undefined") {
+      const draft = localStorage.getItem("chat_draft_" + effectiveConvId) || "";
+      setValue(draft);
+    }
+  }, [effectiveConvId]);
+
+  // Smart Replies state
+  const [smartReplies, setSmartReplies] = useState<string[]>([]);
+  const messagesByConversation = useChatStore((s) => s.messagesByConversation);
+  const convMessages = effectiveConvId ? messagesByConversation[effectiveConvId] : undefined;
+
+  const lastMessage = useMemo(() => {
+    if (!convMessages || convMessages.length === 0) return null;
+    return convMessages[convMessages.length - 1];
+  }, [convMessages]);
+
+  const lastCheckedMsgIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!lastMessage || !effectiveConvId) {
+      setSmartReplies([]);
+      return;
+    }
+    const isOtherSender = lastMessage.senderId !== currentUserId && lastMessage.senderRole !== "BOT";
+    if (!isOtherSender || !lastMessage.body || lastMessage.isDeleted) {
+      setSmartReplies([]);
+      return;
+    }
+
+    if (lastCheckedMsgIdRef.current === lastMessage.messageId) {
+      return;
+    }
+    lastCheckedMsgIdRef.current = lastMessage.messageId;
+
+    const recent = (convMessages || []).slice(-5).map((m) => ({
+      senderName: m.senderName || "Đối phương",
+      content: m.body || "",
+      isOwn: m.senderId === currentUserId,
+    }));
+
+    chatbotService
+      .smartReplies({ recentMessages: recent })
+      .then((res) => {
+        if (res.data?.success && res.data.data?.suggestions) {
+          setSmartReplies(res.data.data.suggestions);
+        }
+      })
+      .catch(() => {});
+  }, [lastMessage, effectiveConvId, currentUserId, convMessages]);
+
+  const handleSelectSmartReply = (replyText: string) => {
+    setValue(replyText);
+    if (effectiveConvId && typeof window !== "undefined") {
+      localStorage.setItem("chat_draft_" + effectiveConvId, replyText);
+    }
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+  };
 
   // Voice recording state
   const [isRecording, setIsRecording] = useState(false);
@@ -521,6 +589,13 @@ export default function ChatInput({
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       const val = e.target.value;
       setValue(val);
+      if (effectiveConvId && typeof window !== "undefined") {
+        if (val.trim()) {
+          localStorage.setItem("chat_draft_" + effectiveConvId, val);
+        } else {
+          localStorage.removeItem("chat_draft_" + effectiveConvId);
+        }
+      }
       checkMention(val, e.target.selectionStart || val.length);
 
       if (conversationId) {
@@ -531,7 +606,7 @@ export default function ChatInput({
         }
       }
     },
-    [conversationId, isGroupConv]
+    [conversationId, isGroupConv, effectiveConvId]
   );
 
   const handleSend = () => {
@@ -540,6 +615,9 @@ export default function ChatInput({
     onSend(text, pendingAttachments);
     if (conversationId) sendStopTyping(conversationId);
     setValue("");
+    if (effectiveConvId && typeof window !== "undefined") {
+      localStorage.removeItem("chat_draft_" + effectiveConvId);
+    }
     setPendingAttachments([]);
     setOpenEmoji(false);
     setMentionFilter(null);
@@ -827,6 +905,57 @@ export default function ChatInput({
         attachments={pendingAttachments}
         onRemove={handleRemoveAttachment}
       />
+
+      {smartReplies.length > 0 && !value.trim() && (
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 1,
+            px: 2,
+            py: 0.8,
+            overflowX: "auto",
+            scrollbarWidth: "none",
+            bgcolor: "rgba(124, 58, 237, 0.04)",
+            borderTop: "1px solid rgba(124, 58, 237, 0.12)",
+          }}
+        >
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, flexShrink: 0 }}>
+            <AutoAwesomeOutlinedIcon sx={{ fontSize: 14, color: "#7C3AED" }} />
+            <Typography sx={{ fontSize: 11.5, fontWeight: 700, color: "#7C3AED" }}>
+              Gợi ý trả lời:
+            </Typography>
+          </Box>
+          {smartReplies.map((reply, idx) => (
+            <Chip
+              key={idx}
+              label={reply}
+              size="small"
+              clickable
+              onClick={() => handleSelectSmartReply(reply)}
+              sx={{
+                bgcolor: "#FFFFFF",
+                color: "#1E293B",
+                fontSize: 12,
+                fontWeight: 500,
+                border: "1px solid rgba(124, 58, 237, 0.2)",
+                boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
+                "&:hover": {
+                  bgcolor: "rgba(124, 58, 237, 0.08)",
+                  borderColor: "#7C3AED",
+                },
+              }}
+            />
+          ))}
+          <IconButton
+            size="small"
+            onClick={() => setSmartReplies([])}
+            sx={{ p: 0.3, color: "#94A3B8", ml: "auto" }}
+          >
+            <CloseRoundedIcon sx={{ fontSize: 14 }} />
+          </IconButton>
+        </Box>
+      )}
 
       <DropZone isDragging={isDragging}>
         {isRecording ? (

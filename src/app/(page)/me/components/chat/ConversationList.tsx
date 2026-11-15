@@ -1,9 +1,33 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Box, CircularProgress, IconButton, Menu, MenuItem, Typography } from "@mui/material";
+import {
+  Box,
+  CircularProgress,
+  IconButton,
+  Menu,
+  MenuItem,
+  Typography,
+  Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  ListItemIcon,
+} from "@mui/material";
 import { styled } from "@mui/material/styles";
-import { Group, MoreVert, Person, PushPin, PushPinOutlined, VolumeOff, VolumeUp } from "@mui/icons-material";
+import {
+  Group,
+  MoreVert,
+  Person,
+  PushPin,
+  PushPinOutlined,
+  VolumeOff,
+  VolumeUp,
+  Lock,
+  LockOpen,
+} from "@mui/icons-material";
 import { toast } from "react-toastify";
 import { useTrans } from "@/src/common/utilities/hook/trans";
 import { resolveMediaUrl } from "@/src/common/helpers/displayMedia.helpers";
@@ -186,6 +210,18 @@ export default function ConversationList({ filterUnread = false }: ConversationL
   const conversationFetched = useChatStore((s) => s.conversationFetched);
   const fetchListConversation = useChatStore((s) => s.fetchListConversation);
 
+  const hiddenConversationIds = useChatStore((s) => s.hiddenConversationIds);
+  const isPinUnlocked = useChatStore((s) => s.isPinUnlocked);
+  const setPinUnlocked = useChatStore((s) => s.setPinUnlocked);
+  const hideConversation = useChatStore((s) => s.hideConversation);
+  const unhideConversation = useChatStore((s) => s.unhideConversation);
+  const userPinCode = useChatStore((s) => s.userPinCode);
+  const setUserPinCode = useChatStore((s) => s.setUserPinCode);
+
+  const [pinModalOpen, setPinModalOpen] = useState(false);
+  const [targetPinConvId, setTargetPinConvId] = useState<string | null>(null);
+  const [pinInput, setPinInput] = useState("");
+
   const t = useTrans();
 
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
@@ -197,7 +233,11 @@ export default function ConversationList({ filterUnread = false }: ConversationL
 
   const displayConversations = useMemo<ConversationDto[]>(() => {
     if (!conversationFetched) return [];
-    const sorted = [...listConversation].sort((a, b) => {
+    let list = listConversation;
+    if (!isPinUnlocked) {
+      list = list.filter((c) => !hiddenConversationIds.includes(c.id));
+    }
+    const sorted = [...list].sort((a, b) => {
       const aPinned = (a as any).isPinned || false;
       const bPinned = (b as any).isPinned || false;
       if (aPinned && !bPinned) return -1;
@@ -207,11 +247,43 @@ export default function ConversationList({ filterUnread = false }: ConversationL
       return bTime - aTime;
     });
     return filterUnread ? sorted.filter((c) => (c.unreadCount ?? 0) > 0) : sorted;
-  }, [conversationFetched, listConversation, filterUnread]);
+  }, [conversationFetched, listConversation, filterUnread, isPinUnlocked, hiddenConversationIds]);
 
   const closeMenu = () => {
     setAnchorEl(null);
     setSelectedConversation(null);
+  };
+
+  const handleHideClick = (convId: string) => {
+    closeMenu();
+    if (!userPinCode) {
+      setTargetPinConvId(convId);
+      setPinInput("");
+      setPinModalOpen(true);
+    } else {
+      hideConversation(convId);
+      toast.success("Đã ẩn cuộc trò chuyện. Gõ mã PIN vào ô tìm kiếm để mở lại.");
+    }
+  };
+
+  const handleUnhideClick = (convId: string) => {
+    closeMenu();
+    unhideConversation(convId);
+    toast.success("Đã bỏ ẩn cuộc trò chuyện.");
+  };
+
+  const handleSavePinAndHide = () => {
+    if (pinInput.trim().length !== 4 || !/^\d{4}$/.test(pinInput.trim())) {
+      toast.warning("Mã PIN phải gồm đúng 4 chữ số!");
+      return;
+    }
+    setUserPinCode(pinInput.trim());
+    if (targetPinConvId) {
+      hideConversation(targetPinConvId);
+      toast.success("Đã thiết lập mã PIN và ẩn trò chuyện thành công!");
+    }
+    setPinModalOpen(false);
+    setTargetPinConvId(null);
   };
 
   const refresh = () => fetchListConversation(RefreshLimit);
@@ -259,9 +331,50 @@ export default function ConversationList({ filterUnread = false }: ConversationL
   return (
     <>
       <Root>
+        {isPinUnlocked && (
+          <Box
+            sx={{
+              mx: 1,
+              my: 1,
+              p: 1,
+              borderRadius: 2,
+              bgcolor: "rgba(220, 38, 38, 0.08)",
+              border: "1px solid rgba(220, 38, 38, 0.2)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
+          >
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.8 }}>
+              <Typography sx={{ fontSize: 13 }}>🔓</Typography>
+              <Typography sx={{ fontSize: 11.5, fontWeight: 600, color: "#DC2626" }}>
+                Đang mở trò chuyện ẩn ({hiddenConversationIds.length})
+              </Typography>
+            </Box>
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={() => setPinUnlocked(false)}
+              sx={{
+                borderColor: "#DC2626",
+                color: "#DC2626",
+                fontSize: 11,
+                py: 0.2,
+                px: 1,
+                textTransform: "none",
+                minWidth: 0,
+                "&:hover": { bgcolor: "rgba(220, 38, 38, 0.06)", borderColor: "#DC2626" },
+              }}
+            >
+              Khóa lại 🔒
+            </Button>
+          </Box>
+        )}
+
         {displayConversations.map((item) => {
           const isPinned = (item as any).isPinned || false;
           const isMuted = (item as any).isMuted || false;
+          const isHidden = hiddenConversationIds.includes(item.id);
           const isActive = activeConversationId === item.id;
           const isGroup = item.type === "group" || item.type === "GROUP";
           
@@ -301,6 +414,9 @@ export default function ConversationList({ filterUnread = false }: ConversationL
                         />
                       )}
                       <Name unread={isUnread}>{item.name || t("CHAT.CONVERSATION")}</Name>
+                      {isHidden && (
+                        <Lock sx={{ fontSize: 13, color: "#EF4444", flexShrink: 0 }} />
+                      )}
                     </Box>
                     <Meta sx={{ minWidth: 46, justifyContent: "flex-end", height: 20 }}>
                       {(item.type === "group" || item.type === "GROUP") ? (
@@ -354,16 +470,27 @@ export default function ConversationList({ filterUnread = false }: ConversationL
 
                   <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mt: "3px" }}>
                     <LastMessage unread={isUnread} sx={{ mt: 0, flex: 1, mr: 1 }}>
-                      {item?.lastMessage?.content
-                        ? (() => {
-                            const isMine = item.lastMessage!.senderId === authData?.data?.user?.id;
-                            const isGroup = item.type === "GROUP" || item.type === "group";
-                            if (!isMine && isGroup && item.lastMessage!.senderName) {
-                              return `${item.lastMessage!.senderName}: ${item.lastMessage!.content}`;
-                            }
-                            return `${isMine ? t("CHAT.YOU") + ": " : ""}${item.lastMessage!.content}`;
-                          })()
-                        : t("CHAT.NO_MESSAGES")}
+                      {(() => {
+                        const draft = typeof window !== "undefined" && !isActive ? localStorage.getItem("chat_draft_" + item.id) : null;
+                        if (draft && draft.trim()) {
+                          return (
+                            <>
+                              <span style={{ color: "#EF4444", fontWeight: 600 }}>[Bản nháp] </span>
+                              <span style={{ color: "#64748B" }}>{draft}</span>
+                            </>
+                          );
+                        }
+                        return item?.lastMessage?.content
+                          ? (() => {
+                              const isMine = item.lastMessage!.senderId === authData?.data?.user?.id;
+                              const isGroup = item.type === "GROUP" || item.type === "group";
+                              if (!isMine && isGroup && item.lastMessage!.senderName) {
+                                return `${item.lastMessage!.senderName}: ${item.lastMessage!.content}`;
+                              }
+                              return `${isMine ? t("CHAT.YOU") + ": " : ""}${item.lastMessage!.content}`;
+                            })()
+                          : t("CHAT.NO_MESSAGES");
+                      })()}
                     </LastMessage>
                     {isUnread && (
                       <UnreadCountBadge>{item.unreadCount}</UnreadCountBadge>
@@ -415,10 +542,73 @@ export default function ConversationList({ filterUnread = false }: ConversationL
                     </>
                   )}
                 </MenuItem>
+                <MenuItem
+                  onClick={() => {
+                    const isHidden = hiddenConversationIds.includes(selectedConversation);
+                    if (isHidden) {
+                      handleUnhideClick(selectedConversation);
+                    } else {
+                      handleHideClick(selectedConversation);
+                    }
+                  }}
+                >
+                  {hiddenConversationIds.includes(selectedConversation) ? (
+                    <>
+                      <LockOpen sx={{ mr: 1.5, fontSize: 18, color: "#16A34A" }} />
+                      Bỏ ẩn cuộc trò chuyện
+                    </>
+                  ) : (
+                    <>
+                      <Lock sx={{ mr: 1.5, fontSize: 18, color: "#EF4444" }} />
+                      Ẩn cuộc trò chuyện (PIN)
+                    </>
+                  )}
+                </MenuItem>
               </Box>
             );
           })() : null}
       </Menu>
+
+      {/* Dialog thiết lập mã PIN 4 số */}
+      <Dialog open={pinModalOpen} onClose={() => setPinModalOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ fontWeight: 700, fontSize: 16 }}>
+          🔒 Thiết lập mã PIN ẩn trò chuyện
+        </DialogTitle>
+        <DialogContent sx={{ pt: 1 }}>
+          <Typography sx={{ fontSize: 13, color: "#64748B", mb: 2 }}>
+            Nhập 4 chữ số để tạo mã PIN bảo vệ. Sau khi ẩn, bạn chỉ cần gõ đúng 4 số này vào thanh tìm kiếm để mở lại.
+          </Typography>
+          <TextField
+            autoFocus
+            fullWidth
+            type="password"
+            label="Mã PIN (4 số)"
+            placeholder="Ví dụ: 1234"
+            inputProps={{ maxLength: 4, inputMode: "numeric" }}
+            value={pinInput}
+            onChange={(e) => setPinInput(e.target.value.replace(/\D/g, ""))}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleSavePinAndHide();
+            }}
+          />
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setPinModalOpen(false)} sx={{ textTransform: "none" }}>
+            Hủy
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleSavePinAndHide}
+            sx={{
+              background: "#0068FF",
+              textTransform: "none",
+              fontWeight: 600,
+            }}
+          >
+            Lưu & Ẩn trò chuyện
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 }

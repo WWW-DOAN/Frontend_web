@@ -8,6 +8,7 @@ import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import NavigateBeforeIcon from "@mui/icons-material/NavigateBefore";
 import NavigateNextIcon from "@mui/icons-material/NavigateNext";
 import { useTrans } from "@/src/common/utilities/hook/trans";
+import { ImageAiDialog } from "@/src/app/(page)/me/components/chat/ImageAiDialog";
 
 export interface MediaPreviewItem {
   key: string;
@@ -225,6 +226,7 @@ export default function MediaPreviewModal({
   // Xây dựng danh sách media đầy đủ
   const allMedia = media && mediaList.length === 0 ? [media] : mediaList.length > 0 ? mediaList : [];
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
+  const [aiDialogOpen, setAiDialogOpen] = useState(false);
 
   // Reset index khi mở modal
   useEffect(() => {
@@ -322,6 +324,25 @@ export default function MediaPreviewModal({
               <Counter>
                 {currentIndex + 1} / {totalCount}
               </Counter>
+            )}
+            {mediaUrl && isImage && (
+              <Button
+                onClick={() => setAiDialogOpen(true)}
+                startIcon={<span>✨</span>}
+                sx={{
+                  background: "linear-gradient(135deg, #7C3AED 0%, #2563EB 100%)",
+                  color: "#fff",
+                  textTransform: "none",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  borderRadius: 1.5,
+                  px: 1.5,
+                  boxShadow: "0 2px 8px rgba(124, 58, 237, 0.4)",
+                  "&:hover": { opacity: 0.9 },
+                }}
+              >
+                Hỏi ZAi về ảnh
+              </Button>
             )}
             {mediaUrl && (
               <Button
@@ -451,6 +472,15 @@ export default function MediaPreviewModal({
           </ThumbnailBar>
         )}
       </ViewerRoot>
+
+      {isImage && mediaUrl && (
+        <ImageAiDialog
+          open={aiDialogOpen}
+          onClose={() => setAiDialogOpen(false)}
+          imageUrl={mediaUrl}
+          imageName={currentMedia?.name}
+        />
+      )}
     </Dialog>
   );
 }

@@ -52,6 +52,11 @@ export interface ChatState {
   mediaByConversation: AttachmentMap;
   filesByConversation: AttachmentMap;
   linksByConversation: LinkMap;
+
+  // Hidden conversation PIN protection (Chuẩn Zalo)
+  hiddenConversationIds: string[];
+  userPinCode: string | null;
+  isPinUnlocked: boolean;
 }
 
 export interface ChatSetters {
@@ -109,9 +114,29 @@ export interface ChatSetters {
 
   fetchListConversation: (params?: { page?: number; limit?: number }) => Promise<void>;
   resetChatState: () => void;
+
+  hideConversation: (conversationId: string) => void;
+  unhideConversation: (conversationId: string) => void;
+  setUserPinCode: (pin: string) => void;
+  setPinUnlocked: (unlocked: boolean) => void;
 }
 
 export type ChatStore = ChatState & ChatSetters;
+
+const loadHiddenConvs = (): string[] => {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem("zalo_hidden_convs");
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+};
+
+const loadUserPin = (): string | null => {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("zalo_chat_pin");
+};
 
 export const initialChatState: ChatState = {
   initialized: false,
@@ -137,6 +162,10 @@ export const initialChatState: ChatState = {
   mediaByConversation: {},
   filesByConversation: {},
   linksByConversation: {},
+
+  hiddenConversationIds: loadHiddenConvs(),
+  userPinCode: loadUserPin(),
+  isPinUnlocked: false,
 };
 
 export const useChatStore = create<ChatStore>((set, get) => ({
@@ -427,4 +456,32 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   },
 
   resetChatState: () => set(initialChatState),
+
+  hideConversation: (conversationId: string) => {
+    const next = Array.from(new Set([...get().hiddenConversationIds, conversationId]));
+    if (typeof window !== "undefined") {
+      localStorage.setItem("zalo_hidden_convs", JSON.stringify(next));
+    }
+    set({ hiddenConversationIds: next });
+    if (get().activeConversationId === conversationId && !get().isPinUnlocked) {
+      set({ activeConversationId: null });
+    }
+  },
+
+  unhideConversation: (conversationId: string) => {
+    const next = get().hiddenConversationIds.filter((id) => id !== conversationId);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("zalo_hidden_convs", JSON.stringify(next));
+    }
+    set({ hiddenConversationIds: next });
+  },
+
+  setUserPinCode: (pin: string) => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("zalo_chat_pin", pin);
+    }
+    set({ userPinCode: pin });
+  },
+
+  setPinUnlocked: (unlocked: boolean) => set({ isPinUnlocked: unlocked }),
 }));

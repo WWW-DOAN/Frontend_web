@@ -8,6 +8,7 @@ import {
   Button,
   Chip,
   ClickAwayListener,
+  CircularProgress,
   Dialog,
   DialogContent,
   DialogTitle,
@@ -58,6 +59,8 @@ import PlaceIcon from "@mui/icons-material/Place";
 import EventIcon from "@mui/icons-material/Event";
 import AutorenewIcon from "@mui/icons-material/Autorenew";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
+import TranslateOutlinedIcon from "@mui/icons-material/TranslateOutlined";
+import { chatbotService } from "@/src/common/service/chatbot-service";
 import KeyIcon from "@mui/icons-material/Key";
 import FavoriteRoundedIcon from "@mui/icons-material/FavoriteRounded";
 import { buildS3Url } from "@/src/common/components/MediaPreviewModal";
@@ -777,6 +780,32 @@ const MessageItem: React.FC<MessageItemProps> = ({
   const [reactionDetailOpen, setReactionDetailOpen] = useState(false);
   const [reactionTab, setReactionTab] = useState(0);
 
+  const [translation, setTranslation] = useState<string | null>(null);
+  const [translating, setTranslating] = useState(false);
+  const [showTranslation, setShowTranslation] = useState(false);
+
+  const handleTranslate = async () => {
+    if (!content) return;
+    if (translation) {
+      setShowTranslation((prev) => !prev);
+      return;
+    }
+    setTranslating(true);
+    setShowTranslation(true);
+    try {
+      const res = await chatbotService.translate({ text: content });
+      if (res.data?.success && res.data.data?.translatedText) {
+        setTranslation(res.data.data.translatedText);
+      } else {
+        setShowTranslation(false);
+      }
+    } catch {
+      setShowTranslation(false);
+    } finally {
+      setTranslating(false);
+    }
+  };
+
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -1262,6 +1291,51 @@ const MessageItem: React.FC<MessageItemProps> = ({
                     {renderMessageTextWithMentions(content, memberNamesList)}
                   </MessageText>
                 )
+              )}
+
+              {showTranslation && (
+                <Box
+                  sx={{
+                    mt: 1,
+                    p: 1.25,
+                    borderRadius: 2,
+                    bgcolor: isOwn ? "rgba(255, 255, 255, 0.9)" : "rgba(37, 99, 235, 0.05)",
+                    border: "1px solid rgba(37, 99, 235, 0.15)",
+                    borderLeft: "3px solid #2563EB",
+                    maxWidth: 420,
+                  }}
+                >
+                  <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 0.5 }}>
+                    <Typography
+                      sx={{
+                        fontSize: 11,
+                        fontWeight: 700,
+                        color: "#2563EB",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 0.5,
+                      }}
+                    >
+                      <TranslateOutlinedIcon sx={{ fontSize: 13 }} /> BẢN DỊCH TỪ ZAi
+                    </Typography>
+                    <Typography
+                      onClick={() => setShowTranslation(false)}
+                      sx={{ fontSize: 11, color: "#64748B", cursor: "pointer", "&:hover": { color: "#1E293B" } }}
+                    >
+                      Ẩn
+                    </Typography>
+                  </Box>
+                  {translating ? (
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1, py: 0.5 }}>
+                      <CircularProgress size={13} sx={{ color: "#2563EB" }} />
+                      <Typography sx={{ fontSize: 12, color: "#64748B" }}>Đang dịch...</Typography>
+                    </Box>
+                  ) : (
+                    <Typography sx={{ fontSize: 13, color: "#1E293B", lineHeight: 1.45 }}>
+                      {translation}
+                    </Typography>
+                  )}
+                </Box>
               )}
 
               {audioAttachments.length > 0 && (
@@ -1803,6 +1877,18 @@ const MessageItem: React.FC<MessageItemProps> = ({
           }}
         >
           {[
+            !!content ? (
+              <MenuItem
+                key="translate"
+                onClick={() => {
+                  setAnchorEl(null);
+                  handleTranslate();
+                }}
+              >
+                <TranslateOutlinedIcon sx={{ mr: 1.2, fontSize: 18, color: "#2563EB" }} />
+                Dịch tin nhắn (ZAi)
+              </MenuItem>
+            ) : null,
             onForward ? (
               <MenuItem
                 key="forward"

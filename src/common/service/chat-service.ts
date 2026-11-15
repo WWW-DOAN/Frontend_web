@@ -547,4 +547,14 @@ deleteMessage(conversationId: string, createdAt: number, messageId: string) {
   transferOwnership(conversationId: string, newOwnerId: string) {
     return http.post(API.API_CONVERSATIONS_TRANSFER_OWNERSHIP(conversationId), { newOwnerId });
   },
+
+  getLinkPreview(url: string) {
+    return http.get<IApiResponse<{
+      title?: string;
+      description?: string;
+      image?: string;
+      siteName?: string;
+      url: string;
+    }>>(`${API.API_CONVERSATIONS_LINK_PREVIEW}?url=${encodeURIComponent(url)}`);
+  },
 };

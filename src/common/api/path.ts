@@ -173,6 +173,11 @@ export const API = {
         `/api/chatbot/conversations/${conversationId}`,
     API_CHATBOT_MESSAGES: (conversationId: string) =>
         `/api/chatbot/conversations/${conversationId}/messages`,
+    API_CHATBOT_GROUP_ASSISTANT: "/api/chatbot/group-assistant",
+    API_CHATBOT_VISION_QA: "/api/chatbot/vision-qa",
+    API_CHATBOT_SMART_REPLIES: "/api/chatbot/smart-replies",
+    API_CHATBOT_TRANSLATE: "/api/chatbot/translate",
+    API_CONVERSATIONS_LINK_PREVIEW: "/api/conversations/link-preview",
 
     /* ================= CALL ================= */
     API_CALLS_START: (conversationId: string) =>

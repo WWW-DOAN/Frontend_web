@@ -96,6 +96,7 @@ export interface MessageReplyPreview {
   messageId: string;
   senderId: string;
   senderName?: string;
+  senderRole?: string;
   body: string;
   attachments: AttachmentDto[];
   isDeleted?: boolean;
@@ -154,6 +155,7 @@ export interface UiMessage {
   conversationId: string;
   senderId: string;
   senderName?: string;
+  senderRole?: string;
   body: string;
   createdAt: number;
   attachments: AttachmentDto[];
