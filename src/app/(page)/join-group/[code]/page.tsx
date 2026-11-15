@@ -19,19 +19,22 @@ export default function JoinGroupPage() {
     chatService
       .joinGroupByCode(code)
       .then((res: any) => {
-        const cid = res?.data?.conversationId ?? res?.conversationId;
+        const payload =
+          res?.payload?.data ?? res?.payload ?? res?.data;
+        const cid = payload?.conversationId ?? res?.conversationId;
         if (cid) {
           setConversationId(cid);
           setStatus("success");
         } else {
           setStatus("error");
-          setErrorMsg("Không tìm thấy nhóm.");
+          setErrorMsg(payload?.message || "Không tìm thấy nhóm.");
         }
       })
       .catch((err: any) => {
         setStatus("error");
         const msg =
           err?.response?.data?.message ??
+          err?.payload?.message ??
           err?.message ??
           "Liên kết mời không hợp lệ hoặc đã hết hạn.";
         setErrorMsg(msg);

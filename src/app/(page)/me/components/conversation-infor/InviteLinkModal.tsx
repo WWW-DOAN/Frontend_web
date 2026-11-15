@@ -42,14 +42,20 @@ export default function InviteLinkModal({
     setError(null);
     try {
       const res = await chatService.getGroupInviteLink(conversationId);
-      const data = (res as any)?.data;
-      setInviteCode(data?.inviteCode ?? "");
-      const link =
-        data?.inviteLink ??
-        (data?.inviteCode
-          ? `${window.location.origin}/join-group/${data.inviteCode}`
-          : "");
-      setInviteLink(link);
+      const data =
+        (res as any)?.payload?.data ??
+        (res as any)?.payload ??
+        (res as any)?.data;
+      const code = data?.inviteCode ?? "";
+      const rawLink =
+        data?.inviteLink ?? (code ? `/join-group/${code}` : "");
+      const fullLink = rawLink
+        ? rawLink.startsWith("http")
+          ? rawLink
+          : `${window.location.origin}${rawLink}`
+        : "";
+      setInviteCode(code);
+      setInviteLink(fullLink);
     } catch {
       setError("Không thể tải liên kết mời. Vui lòng thử lại.");
     } finally {
@@ -75,14 +81,20 @@ export default function InviteLinkModal({
     setIsResetting(true);
     try {
       const res = await chatService.resetGroupInviteLink(conversationId);
-      const data = (res as any)?.data;
-      setInviteCode(data?.inviteCode ?? "");
-      const link =
-        data?.inviteLink ??
-        (data?.inviteCode
-          ? `${window.location.origin}/join-group/${data.inviteCode}`
-          : "");
-      setInviteLink(link);
+      const data =
+        (res as any)?.payload?.data ??
+        (res as any)?.payload ??
+        (res as any)?.data;
+      const code = data?.inviteCode ?? "";
+      const rawLink =
+        data?.inviteLink ?? (code ? `/join-group/${code}` : "");
+      const fullLink = rawLink
+        ? rawLink.startsWith("http")
+          ? rawLink
+          : `${window.location.origin}${rawLink}`
+        : "";
+      setInviteCode(code);
+      setInviteLink(fullLink);
       toast.success("Đã đặt lại liên kết mời");
     } catch {
       toast.error("Không thể đặt lại liên kết");
