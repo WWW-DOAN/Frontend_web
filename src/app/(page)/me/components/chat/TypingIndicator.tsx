@@ -33,25 +33,27 @@ const Dot = styled(Box)({
 interface TypingIndicatorProps {
   names: string[];
   count: number;
+  isBot?: boolean;
 }
 
-export default function TypingIndicator({ names, count }: TypingIndicatorProps) {
+export default function TypingIndicator({ names, count, isBot }: TypingIndicatorProps) {
   const t = useTrans();
-  const text =
-    count === 1
+  const text = isBot
+    ? "ZAi đang suy nghĩ..."
+    : count === 1
       ? `${names[0]} ${t("CHAT.TYPING_SINGLE")}`
       : count === 2
         ? `${names[0]} ${t("CHAT.TYPING_DUAL", { name: names[1] })}`
         : t("CHAT.TYPING_MULTIPLE", { name: names[0], count: count - 1 });
 
   return (
-    <Root>
+    <Root sx={{ bgcolor: isBot ? "#FAF5FF" : "#F8FAFC", borderTop: "1px solid #E2E8F0" }}>
       <Box sx={{ display: "flex", gap: 0.5 }}>
-        <Dot />
-        <Dot />
-        <Dot />
+        <Dot sx={{ bgcolor: isBot ? "#8B5CF6" : "#94A3B8" }} />
+        <Dot sx={{ bgcolor: isBot ? "#8B5CF6" : "#94A3B8" }} />
+        <Dot sx={{ bgcolor: isBot ? "#8B5CF6" : "#94A3B8" }} />
       </Box>
-      <Typography variant="caption" sx={{ color: "#64748B", fontStyle: "italic" }}>
+      <Typography variant="caption" sx={{ color: isBot ? "#7C3AED" : "#64748B", fontStyle: "italic", fontWeight: 500 }}>
         {text}
       </Typography>
     </Root>

@@ -347,6 +347,13 @@ export default function ChatPanel({
       prevLastMessageIdRef.current = lastMessageId;
     }
   }, [conversationId, messages, firstMessageId, lastMessageId, loading, loadingMore]);
+
+  const typingUsers = (conversationId ? typingUsersByConversation[conversationId] : undefined) || [];
+  useEffect(() => {
+    if (typingUsers.length > 0 && !loading && !loadingMore) {
+      scrollToBottomStable();
+    }
+  }, [typingUsers.length, loading, loadingMore]);
   useEffect(() => {
     return () => {
       if (scrollHideTimeoutRef.current) {
@@ -500,6 +507,7 @@ export default function ChatPanel({
             .slice(0, 2)
             .map((u) => u.displayName || t("CHAT.SOMEONE"))}
           count={typingUsersByConversation[conversationId].length}
+          isBot={typingUsersByConversation[conversationId].some((u) => u.isBot || u.displayName === "ZAi")}
         />
       )}
 

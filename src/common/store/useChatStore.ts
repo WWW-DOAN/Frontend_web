@@ -25,6 +25,8 @@ type LinkMap = Record<string, string[]>;
 export interface TypingUser {
   userId: string;
   displayName?: string;
+  avatarUrl?: string;
+  isBot?: boolean;
 }
 
 export interface ChatState {
@@ -110,6 +112,7 @@ export interface ChatSetters {
   ) => void;
 
   setTypingUsers: (conversationId: string, users: TypingUser[]) => void;
+  clearTypingUsers: (conversationId: string) => void;
   setOnlineUserIds: (ids: string[]) => void;
 
   fetchListConversation: (params?: { page?: number; limit?: number }) => Promise<void>;
@@ -427,6 +430,14 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       typingUsersByConversation: {
         ...state.typingUsersByConversation,
         [conversationId]: users,
+      },
+    })),
+
+  clearTypingUsers: (conversationId) =>
+    set((state) => ({
+      typingUsersByConversation: {
+        ...state.typingUsersByConversation,
+        [conversationId]: [],
       },
     })),
 

@@ -184,9 +184,26 @@ export default function ChatHeader({
           <ConvStatus>
             {isTyping ? (
               <>
-                <StatusDot online={true} sx={{ bgcolor: "#0068FF", animation: "pulse 1.2s infinite" }} />
-                <Typography sx={{ fontSize: 12, color: "#0068FF", fontWeight: 500 }}>
-                  {typingUsers[0]?.displayName || "Thành viên"} đang nhập...
+                <StatusDot
+                  online={true}
+                  sx={{
+                    bgcolor: typingUsers[0]?.isBot ? "#7C3AED" : "#0068FF",
+                    animation: "pulse 1.2s infinite",
+                  }}
+                />
+                <Typography
+                  sx={{
+                    fontSize: 12,
+                    color: typingUsers[0]?.isBot ? "#7C3AED" : "#0068FF",
+                    fontWeight: 600,
+                    fontStyle: "italic",
+                  }}
+                >
+                  {typingUsers[0]?.isBot
+                    ? "ZAi đang suy nghĩ..."
+                    : typingUsers.length > 1
+                    ? `${typingUsers[0]?.displayName} và ${typingUsers.length - 1} người khác đang nhập...`
+                    : `${typingUsers[0]?.displayName || "Thành viên"} đang nhập...`}
                 </Typography>
               </>
             ) : (

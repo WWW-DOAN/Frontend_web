@@ -48,6 +48,7 @@ import PendingAttachmentsList from "./PendingAttachmentsList";
 import { ChatAttachmentPayload } from "@/src/common/interface/media-interface";
 import { uploadMedia } from "@/src/common/service/media-service";
 import { useChatStore } from "@/src/common/store/useChatStore";
+import { useAuthStore } from "@/src/common/store/useAuthStore";
 import { useTrans } from "@/src/common/utilities/hook/trans";
 
 const EmojiPicker = dynamic(() => import("emoji-picker-react"), {
@@ -253,6 +254,14 @@ export default function ChatInput({
   const isOwnerOrAdmin = myMember?.role === "OWNER" || myMember?.role === "ADMIN";
   const canSendInGroup = conv?.settings?.permissions?.canSendMessage !== false;
   const isSendBlocked = isGroupConv && !isOwnerOrAdmin && !canSendInGroup;
+
+  const authUser = useAuthStore((s) => s.authData?.data?.user);
+  const currentUserName =
+    authUser?.displayName ||
+    authUser?.fullName ||
+    authUser?.username ||
+    myMember?.displayName ||
+    "Thành viên";
 
   const [value, setValue] = useState("");
   const [openEmoji, setOpenEmoji] = useState(false);
@@ -642,21 +651,33 @@ export default function ChatInput({
       checkMention(val, e.target.selectionStart || val.length);
 
       if (conversationId) {
-        const now = Date.now();
-        if (now - lastTypingTime.current >= 1000) {
-          lastTypingTime.current = now;
-          sendTyping(conversationId);
+        if (!val.trim()) {
+          sendStopTyping(conversationId, currentUserName);
+        } else {
+          const now = Date.now();
+          if (now - lastTypingTime.current >= 1500) {
+            lastTypingTime.current = now;
+            sendTyping(conversationId, currentUserName);
+          }
         }
       }
     },
-    [conversationId, isGroupConv, effectiveConvId]
+    [conversationId, isGroupConv, effectiveConvId, currentUserName]
   );
+
+  useEffect(() => {
+    return () => {
+      if (effectiveConvId) {
+        sendStopTyping(effectiveConvId, currentUserName);
+      }
+    };
+  }, [effectiveConvId, currentUserName]);
 
   const handleSend = () => {
     const text = value.trim();
     if ((!text && !hasAttachments) || disabled) return;
     onSend(text, pendingAttachments);
-    if (conversationId) sendStopTyping(conversationId);
+    if (conversationId) sendStopTyping(conversationId, currentUserName);
     setValue("");
     if (effectiveConvId && typeof window !== "undefined") {
       localStorage.removeItem("chat_draft_" + effectiveConvId);

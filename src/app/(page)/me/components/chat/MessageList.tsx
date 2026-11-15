@@ -9,6 +9,7 @@ import { pinMessage, toggleReaction, unpinMessage, deleteMessageForMe } from "@/
 import { resolveMediaUrl } from "@/src/common/helpers/displayMedia.helpers";
 import MessageItem from "./MessageItem";
 import SystemMessageBanner from "./message-system/SystemMessageBanner";
+import TypingBubble from "./TypingBubble";
 import { useTrans } from "@/src/common/utilities/hook/trans";
 import i18n from "@/src/common/i18n/i18n";
 
@@ -161,6 +162,15 @@ export default function MessageList({
     return (members || []).filter((m: any) => (m.userId || m.id) !== currentUserId);
   }, [members, currentUserId]);
 
+  const typingUsers = useChatStore(
+    (s) => (conversationId ? s.typingUsersByConversation[conversationId] : undefined) || []
+  );
+  const isGroup =
+    convDetail?.type === "group" ||
+    convDetail?.type === "GROUP" ||
+    convFromList?.type === "group" ||
+    convFromList?.type === "GROUP";
+
   const GROUP_TIME_LIMIT_MS = 2 * 60 * 1000; // 2 minutes
 
   const resolveSenderName = (msg: UiMessage): string => {
@@ -228,7 +238,7 @@ export default function MessageList({
           <CircularProgress size={28} />
           <EmptyDesc>{t("CHAT.LOADING_MESSAGES")}</EmptyDesc>
         </EmptyState>
-      ) : messages.length === 0 ? (
+      ) : messages.length === 0 && typingUsers.length === 0 ? (
         <EmptyState>
           <EmptyTitle>{t("CHAT.NO_MESSAGES")}</EmptyTitle>
           <EmptyDesc>{t("CHAT.START_CONVERSATION")}</EmptyDesc>
@@ -352,6 +362,10 @@ export default function MessageList({
               </Box>
             );
           })}
+
+          {typingUsers.map((user) => (
+            <TypingBubble key={user.userId} user={user} isGroup={isGroup} />
+          ))}
         </MessagesContent>
       )}
     </MessagesWrap>

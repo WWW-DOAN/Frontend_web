@@ -482,6 +482,8 @@ export const initChat = (accessToken: string, currentUserId: string) => {
   window.removeEventListener('chat:reaction', handleWindowReactionEvent);
   window.removeEventListener('conversation:created', handleConversationCreated);
   window.removeEventListener('conversation:removed', handleConversationRemoved);
+  window.removeEventListener('chat:typing', handleWindowTyping);
+  window.removeEventListener('chat:stop_typing', handleWindowStopTyping);
 
   // Add event listeners for STOMP events dispatched from socket.ts
   window.addEventListener('chat:new', handleWindowIncomingMessage);
@@ -496,6 +498,8 @@ export const initChat = (accessToken: string, currentUserId: string) => {
   window.addEventListener('chat:reaction', handleWindowReactionEvent);
   window.addEventListener('conversation:created', handleConversationCreated);
   window.addEventListener('conversation:removed', handleConversationRemoved);
+  window.addEventListener('chat:typing', handleWindowTyping);
+  window.addEventListener('chat:stop_typing', handleWindowStopTyping);
 
   // Load initial online users & start sync
   syncOnlineUsers();
@@ -705,6 +709,15 @@ export const sendMessageHttp = async (
 
   state.appendRealtimeMessage(conversationId, optimisticMessage);
   appendMessageDerivedData(optimisticMessage);
+  
+  if (/@zai\b/i.test(displayBody)) {
+    addTypingUser(conversationId, {
+      userId: "00000000-0000-0000-0000-000000000001",
+      displayName: "ZAi",
+      isBot: true,
+      avatarUrl: "https://res.cloudinary.com/dokskn4kz/image/upload/v1794724426/zalo-chat/zai_bot_avatar.png",
+    });
+  }
   
   // Send via HTTP API
   try {
@@ -1000,21 +1013,83 @@ export const editMessage = async (conversationId: string, messageId: string, new
 };
 
 let typingTimeout: ReturnType<typeof setTimeout> | null = null;
+const _typingTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
-export const sendTyping = (conversationId: string) => {
-  const socket = getSocket();
-  if (!socket?.connected) return;
-  sendSocketMessage("/app/chat/typing", { conversation_id: conversationId });
-  if (typingTimeout) clearTimeout(typingTimeout);
-  typingTimeout = setTimeout(() => {
-    sendSocketMessage("/app/chat/stop_typing", { conversation_id: conversationId });
-  }, 3000);
+const _clearTypingTimer = (conversationId: string, userId: string) => {
+  const key = `${conversationId.toLowerCase()}:${userId.toLowerCase()}`;
+  const timer = _typingTimers.get(key);
+  if (timer) {
+    clearTimeout(timer);
+    _typingTimers.delete(key);
+  }
 };
 
-export const sendStopTyping = (conversationId: string) => {
+export const addTypingUser = (
+  conversationId: string,
+  user: { userId: string; displayName?: string; avatarUrl?: string; isBot?: boolean }
+) => {
+  if (!conversationId || !user.userId) return;
+  const state = useChatStore.getState();
+  const currentUserId = (state.currentUserId || "").trim().toLowerCase();
+  if (user.userId.trim().toLowerCase() === currentUserId) return;
+
+  const currentUsers = state.typingUsersByConversation[conversationId] || [];
+  const exists = currentUsers.some((u) => u.userId.toLowerCase() === user.userId.toLowerCase());
+  const updated = exists
+    ? currentUsers.map((u) => (u.userId.toLowerCase() === user.userId.toLowerCase() ? { ...u, ...user } : u))
+    : [...currentUsers, user];
+
+  state.setTypingUsers(conversationId, updated);
+
+  _clearTypingTimer(conversationId, user.userId);
+  const timeoutMs = user.isBot ? 25000 : 6000;
+  const timer = setTimeout(() => {
+    removeTypingUser(conversationId, user.userId);
+  }, timeoutMs);
+  _typingTimers.set(`${conversationId.toLowerCase()}:${user.userId.toLowerCase()}`, timer);
+};
+
+export const removeTypingUser = (conversationId: string, userId: string) => {
+  if (!conversationId || !userId) return;
+  _clearTypingTimer(conversationId, userId);
+  const state = useChatStore.getState();
+  const currentUsers = state.typingUsersByConversation[conversationId] || [];
+  const updated = currentUsers.filter((u) => u.userId.toLowerCase() !== userId.toLowerCase());
+  if (updated.length !== currentUsers.length) {
+    state.setTypingUsers(conversationId, updated);
+  }
+};
+
+export const sendTyping = (conversationId: string, displayName?: string) => {
   const socket = getSocket();
   if (!socket?.connected) return;
-  sendSocketMessage("/app/chat/stop_typing", { conversation_id: conversationId });
+  const state = useChatStore.getState();
+  const currentUserId = state.currentUserId;
+  sendSocketMessage("/app/chat/typing", {
+    conversation_id: conversationId,
+    user_id: currentUserId,
+    display_name: displayName || "Thành viên",
+  });
+  if (typingTimeout) clearTimeout(typingTimeout);
+  typingTimeout = setTimeout(() => {
+    sendSocketMessage("/app/chat/stop_typing", {
+      conversation_id: conversationId,
+      user_id: currentUserId,
+      display_name: displayName || "Thành viên",
+    });
+  }, 3500);
+};
+
+export const sendStopTyping = (conversationId: string, displayName?: string) => {
+  const socket = getSocket();
+  if (!socket?.connected) return;
+  const state = useChatStore.getState();
+  const currentUserId = state.currentUserId;
+  sendSocketMessage("/app/chat/stop_typing", {
+    conversation_id: conversationId,
+    user_id: currentUserId,
+    display_name: displayName || "Thành viên",
+  });
   if (typingTimeout) {
     clearTimeout(typingTimeout);
     typingTimeout = null;
@@ -1165,6 +1240,10 @@ export const cleanupChat = () => {
   disconnectSocket();
 
   _removeAllWindowListeners();
+  for (const timer of _typingTimers.values()) {
+    clearTimeout(timer);
+  }
+  _typingTimers.clear();
   state.resetChatState();
 };
 
@@ -1173,11 +1252,75 @@ export const cleanupChat = () => {
     handleReactionEvent(event.detail);
   };
 
+  const handleWindowTyping = (event: any) => {
+    const data = event.detail;
+    const conversationId = data?.conversationId || data?.conversation_id;
+    const userId = data?.userId || data?.user_id;
+    let displayName = data?.displayName || data?.display_name;
+
+    if (!conversationId || !userId) return;
+
+    const state = useChatStore.getState();
+    const currentUserId = (state.currentUserId || "").trim().toLowerCase();
+    if (userId.trim().toLowerCase() === currentUserId) return;
+
+    const isBot =
+      userId === "00000000-0000-0000-0000-000000000001" ||
+      (displayName && displayName.toLowerCase().includes("zai"));
+
+    if (isBot) {
+      displayName = "ZAi";
+    }
+
+    const conversation = state.listConversation.find(
+      (c) => (c.id || "").toLowerCase() === conversationId.toLowerCase()
+    );
+    const member = conversation?.members?.find(
+      (m: any) => (m.userId || m.id || m.user_id)?.toLowerCase() === userId.toLowerCase()
+    );
+
+    const resolvedName =
+      displayName ||
+      member?.displayName ||
+      member?.fullName ||
+      member?.username ||
+      (isBot ? "ZAi" : "Thành viên");
+
+    const resolvedAvatar =
+      isBot
+        ? "https://res.cloudinary.com/dokskn4kz/image/upload/v1794724426/zalo-chat/zai_bot_avatar.png"
+        : member?.avatarUrl;
+
+    addTypingUser(conversationId, {
+      userId,
+      displayName: resolvedName,
+      avatarUrl: resolvedAvatar || undefined,
+      isBot,
+    });
+  };
+
+  const handleWindowStopTyping = (event: any) => {
+    const data = event.detail;
+    const conversationId = data?.conversationId || data?.conversation_id;
+    const userId = data?.userId || data?.user_id;
+    if (!conversationId || !userId) return;
+
+    removeTypingUser(conversationId, userId);
+  };
+
   const handleWindowIncomingMessage = (event: any) => {
   console.log('Window event - chat:new:', event.detail);
   const normalized = normalizeMessage(event.detail);
   
   if (!normalized.conversationId || !normalized.messageId) return;
+
+  // Clear typing state for sender and bot
+  if (normalized.senderId) {
+    removeTypingUser(normalized.conversationId, normalized.senderId);
+  }
+  if (normalized.senderId === "00000000-0000-0000-0000-000000000001" || normalized.type === "bot") {
+    removeTypingUser(normalized.conversationId, "00000000-0000-0000-0000-000000000001");
+  }
 
   useChatStore.setState((state) => {
     const currentMessages =
