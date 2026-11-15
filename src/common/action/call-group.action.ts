@@ -365,8 +365,20 @@ export async function startGroupCall(conversationId: string) {
     useCallStore.getState().setStarting(true);
 
     const res = await callService.createGroupCall(conversationId);
-    const roomId = res.session.sfuRoomId;
-    const sessionId = res.session.id;
+    let session = (res as any)?.session || (res as any)?.payload?.session || (res as any)?.data?.session;
+
+    if (!session || !session.sfuRoomId) {
+      const activeRes = await callService.getActiveGroupCall(conversationId).catch(() => null);
+      session = (activeRes as any)?.session || (activeRes as any)?.payload?.session || (activeRes as any)?.data?.session;
+    }
+
+    if (!session || !session.sfuRoomId) {
+      const errMsg = (res as any)?.message || (res as any)?.payload?.message || "Không thể khởi tạo cuộc gọi nhóm";
+      throw new Error(errMsg);
+    }
+
+    const roomId = session.sfuRoomId;
+    const sessionId = session.id;
 
     useCallStore.getState().initiateCall({
       callId: sessionId,
@@ -415,7 +427,10 @@ export async function handleIncomingGroupCall(
 
   try {
     useCallStore.getState().setAnswering(true);
-    await callService.joinGroupCall(conversationId, sessionId);
+    await callService.joinGroupCall(conversationId, sessionId).catch((err) => {
+      console.warn("[joinGroupCall] non-fatal:", err);
+      return null;
+    });
 
     useCallStore.getState().setConnecting();
     useCallStore.getState().setSfuRoomId(sfuRoomId);
@@ -424,7 +439,10 @@ export async function handleIncomingGroupCall(
     await loadIceServers();
     const stream = await getLocalStream(true);
 
-    const roomInfo = await callService.getSfuRoom(sfuRoomId);
+    let roomInfo = await callService.getSfuRoom(sfuRoomId).catch(() => null);
+    if (!roomInfo || !roomInfo.routerRtpCapabilities) {
+      roomInfo = await callService.createSfuRoom(sfuRoomId, conversationId);
+    }
     device = new Device();
     await device.load({ routerRtpCapabilities: roomInfo.routerRtpCapabilities });
 
