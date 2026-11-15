@@ -41,6 +41,7 @@ interface InfConvColumnProps {
 
 const EMPTY_ATTACHMENTS: AttachmentDto[] = [];
 const EMPTY_LINKS: string[] = [];
+const EMPTY_MESSAGES: any[] = [];
 
 const Root = styled(Box)({
   width: 380,
@@ -126,11 +127,11 @@ export default function InfConvColumn({
   );
 
   const pinnedMessages = useChatStore(
-    (state) => state.pinnedMessagesByConversation?.[conversationId] ?? []
+    (state) => state.pinnedMessagesByConversation?.[conversationId] ?? EMPTY_MESSAGES
   );
 
   const messages = useChatStore(
-    (state) => state.messagesByConversation?.[conversationId] ?? []
+    (state) => state.messagesByConversation?.[conversationId] ?? EMPTY_MESSAGES
   );
 
   const remindersCount = useMemo(() => {

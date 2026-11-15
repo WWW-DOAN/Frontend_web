@@ -87,15 +87,15 @@ const AuthLayout = ({ children }: { children: ReactNode }) => {
                 </Grid>
 
                 <GridMenuItem container size={8}>
-                    <MenuAuth>{Trans("HEADER.ZALO_PC")}</MenuAuth>
-                    <MenuAuth>{Trans("HEADER.OFFICE_ACCOUNT")}</MenuAuth>
-                    <MenuAuth>{Trans("HEADER.DEVELOPER")}</MenuAuth>
-                    <MenuAuth>{Trans("HEADER.SECURITY")}</MenuAuth>
-                    <MenuAuth>{Trans("HEADER.HELP")}</MenuAuth>
-                    <MenuAuth>{Trans("HEADER.CONTACT")}</MenuAuth>
-                    <MenuAuth>{Trans("HEADER.REPORT_VIOLATION")}</MenuAuth>
+                    <MenuAuth suppressHydrationWarning>{Trans("HEADER.ZALO_PC")}</MenuAuth>
+                    <MenuAuth suppressHydrationWarning>{Trans("HEADER.OFFICE_ACCOUNT")}</MenuAuth>
+                    <MenuAuth suppressHydrationWarning>{Trans("HEADER.DEVELOPER")}</MenuAuth>
+                    <MenuAuth suppressHydrationWarning>{Trans("HEADER.SECURITY")}</MenuAuth>
+                    <MenuAuth suppressHydrationWarning>{Trans("HEADER.HELP")}</MenuAuth>
+                    <MenuAuth suppressHydrationWarning>{Trans("HEADER.CONTACT")}</MenuAuth>
+                    <MenuAuth suppressHydrationWarning>{Trans("HEADER.REPORT_VIOLATION")}</MenuAuth>
 
-                    <MenuAuth>
+                    <MenuAuth suppressHydrationWarning>
                         {!mounted ? null : isLoggedIn ? (
                             <Image
                                 src={avatarUrl}

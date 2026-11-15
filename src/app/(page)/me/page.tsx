@@ -391,7 +391,7 @@ const Me = () => {
   usePresenceHeartbeat({
     onPresenceUpdate: () => {},
     onUnauthorized: () => {
-      window.location.href = "/auth/login";
+      window.location.href = "/login";
     },
   });
 
