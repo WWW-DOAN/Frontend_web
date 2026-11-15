@@ -284,14 +284,26 @@ export default function ChatInput({
   }, [convMessages]);
 
   const lastCheckedMsgIdRef = useRef<string | null>(null);
+  const activeReqConvIdRef = useRef<string | null>(effectiveConvId);
+
+  // Clear suggestions and reset state whenever user switches conversation
+  useEffect(() => {
+    setSmartReplies([]);
+    setLoadingSmartReplies(false);
+    lastCheckedMsgIdRef.current = null;
+    activeReqConvIdRef.current = effectiveConvId;
+  }, [effectiveConvId]);
 
   const requestSmartReplies = useCallback(
     async (force = false) => {
       if (!effectiveConvId) return;
-      const msgs = messagesByConversation[effectiveConvId] || [];
+      const targetConvId = effectiveConvId;
+      activeReqConvIdRef.current = targetConvId;
+
+      const msgs = messagesByConversation[targetConvId] || [];
       const validMsgs = msgs.filter((m) => !m.isDeleted && Boolean(m.body));
       if (validMsgs.length === 0) {
-        if (force) {
+        if (force && activeReqConvIdRef.current === targetConvId) {
           setSmartReplies(["Chào bạn!", "Bạn cần mình hỗ trợ gì?", "Hôm nay thế nào rồi?"]);
         }
         return;
@@ -306,16 +318,23 @@ export default function ChatInput({
         }));
 
         const res = await chatbotService.smartReplies({ recentMessages: recent });
-        if (res.data?.success && res.data.data?.suggestions && res.data.data.suggestions.length > 0) {
-          setSmartReplies(res.data.data.suggestions);
+        if (activeReqConvIdRef.current !== targetConvId) return;
+
+        const rawData = (res as any)?.data ?? (res as any)?.payload;
+        const innerData = rawData?.data ?? rawData;
+        if (innerData?.suggestions && innerData.suggestions.length > 0) {
+          setSmartReplies(innerData.suggestions);
         } else {
           setSmartReplies(["Đồng ý nhé", "Để mình kiểm tra lại", "Ok bạn!"]);
         }
       } catch (err) {
+        if (activeReqConvIdRef.current !== targetConvId) return;
         console.warn("[SmartReplies] Request failed, using fallback:", err);
         setSmartReplies(["Đồng ý nhé", "Để mình xem lại chút", "Ok bạn!"]);
       } finally {
-        setLoadingSmartReplies(false);
+        if (activeReqConvIdRef.current === targetConvId) {
+          setLoadingSmartReplies(false);
+        }
       }
     },
     [effectiveConvId, messagesByConversation, currentUserId]
@@ -327,6 +346,7 @@ export default function ChatInput({
     // Trigger auto suggestion if the latest message was from another user or bot (not current user)
     const isOtherSender = lastMessage.senderId !== currentUserId;
     if (!isOtherSender || !lastMessage.body || lastMessage.isDeleted) {
+      setSmartReplies([]);
       return;
     }
 
