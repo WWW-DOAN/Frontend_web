@@ -657,14 +657,26 @@ const VoicePlayer: React.FC<{ url: string; isOwn?: boolean; initialDuration?: nu
   );
 };
 
-const renderMessageTextWithMentions = (text: string) => {
+const renderMessageTextWithMentions = (text: string, memberNames: string[] = []) => {
   if (!text) return null;
-  const parts = text.split(/(@[^\s@]+(?:\s+[^\s@]+)?)/g);
+
+  const names = new Set<string>(["ZAi", "All"]);
+  (memberNames || []).forEach((n) => {
+    if (n && n.trim()) names.add(n.trim());
+  });
+  const sortedNames = Array.from(names).sort((a, b) => b.length - a.length);
+  const escaped = sortedNames.map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  const regex = new RegExp(
+    `((?:^|(?<=[\\s(]))(?:@(?:${escaped.join("|")})|@[a-zA-Z0-9_\\u00C0-\\u024F\\u1E00-\\u1EFF]+)(?=$|[\\s,.:;!?)]))`,
+    "gi"
+  );
+
+  const parts = text.split(regex);
   return parts.map((part, index) => {
     if (part.startsWith("@") && part.length > 1) {
       const trimmed = part.trim().toLowerCase();
       const isAll = trimmed === "@all";
-      const isZai = trimmed === "@zai" || trimmed.startsWith("@zai");
+      const isZai = trimmed === "@zai";
       return (
         <Box
           component="span"
@@ -743,6 +755,15 @@ const MessageItem: React.FC<MessageItemProps> = ({
       if (name) map.set(m.userId, name);
     });
     return map;
+  }, [members]);
+
+  const memberNamesList = useMemo(() => {
+    const list: string[] = ["ZAi", "All"];
+    (members as ConversationMemberDto[]).forEach((m) => {
+      const name = m.displayName || m.fullName || m.username || m.nickname || "";
+      if (name && name.trim()) list.push(name.trim());
+    });
+    return list;
   }, [members]);
 
   const resolveUserName = (uid: string): string => {
@@ -1238,7 +1259,7 @@ const MessageItem: React.FC<MessageItemProps> = ({
                   </Box>
                 ) : (
                   <MessageText>
-                    {renderMessageTextWithMentions(content)}
+                    {renderMessageTextWithMentions(content, memberNamesList)}
                   </MessageText>
                 )
               )}
