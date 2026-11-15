@@ -303,13 +303,12 @@ export default function MessageList({
                   onDeleteForMe={() => deleteMessageForMe(conversationId, msg.messageId)}
                 />
 
-                {isLastMessage && otherMembers.length > 0 && (
+                {isLastMessage && mine && otherMembers.length > 0 && (
                   <Box
                     sx={{
                       display: "flex",
-                      justifyContent: mine ? "flex-end" : "flex-start",
-                      pr: mine ? 2 : 0,
-                      pl: mine ? 0 : 6,
+                      justifyContent: "flex-end",
+                      pr: 2,
                       mt: 0.5,
                       mb: 1,
                       alignItems: "center",
@@ -317,7 +316,7 @@ export default function MessageList({
                     }}
                   >
                     <Typography sx={{ fontSize: 11, color: "#64748B", fontWeight: 500, mr: 0.5 }}>
-                      {t("CHAT.SEEN") || "Đã xem"}
+                      {t("CHAT.SEEN")}
                     </Typography>
                     <Box sx={{ display: "flex", alignItems: "center" }}>
                       {otherMembers.slice(0, 5).map((m: any, idx: number) => {
