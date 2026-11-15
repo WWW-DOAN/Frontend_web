@@ -9,6 +9,7 @@ export const initialValues = {
     dateOfBirth: "",
     gender: "male" as Gender,
     confirmPsw: "",
+    phone: "",
 };
 
 export const validationSchemaRegisForm = (Trans: (key: string) => string) =>
@@ -16,8 +17,8 @@ export const validationSchemaRegisForm = (Trans: (key: string) => string) =>
         username: yup
             .string()
             .trim()
-            .min(3, Trans("REGIS.USERNAME_MIN") || "Username phải có ít nhất 3 ký tự")
-            .required(Trans("REGIS.USERNAME_REQUIRED") || "Username là bắt buộc"),
+            .test("min-len", Trans("REGIS.USERNAME_MIN") || "Username phải có ít nhất 3 ký tự", (val) => !val || val.length >= 3)
+            .optional(),
 
         email: yup
             .string()
@@ -37,12 +38,17 @@ export const validationSchemaRegisForm = (Trans: (key: string) => string) =>
 
         dateOfBirth: yup
             .string()
-            .required(Trans("REGIS.DOB_REQUIRED") || "Ngày sinh là bắt buộc"),
+            .optional(),
 
         gender: yup
             .mixed<Gender>()
             .oneOf(["male", "female", "other"])
-            .required(Trans("REGIS.GENDER_REQUIRED") || "Giới tính là bắt buộc"),
+            .optional(),
+
+        phone: yup
+            .string()
+            .trim()
+            .optional(),
 
         confirmPsw: yup
             .string()

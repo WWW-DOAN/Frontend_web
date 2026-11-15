@@ -24,6 +24,48 @@ export interface IRegisterPayload {
     displayName: string;
     gender?: string;
     dateOfBirth?: Date;
+    phone?: string;
+}
+
+export interface ISendOtpResponse {
+    success: boolean;
+    message: string;
+    email: string;
+    cooldown: number;
+    expiresIn: number;
+    devOtp?: string;
+}
+
+export interface IRegisterSendOtpPayload {
+    email: string;
+    password: string;
+    displayName: string;
+    username?: string;
+    phone?: string;
+}
+
+export interface IRegisterVerifyOtpPayload {
+    email: string;
+    otp: string;
+}
+
+export interface ILoginSendOtpPayload {
+    email: string;
+}
+
+export interface ILoginVerifyOtpPayload {
+    email: string;
+    otp: string;
+}
+
+export interface IForgotPasswordSendOtpPayload {
+    email: string;
+}
+
+export interface IForgotPasswordResetPayload {
+    email: string;
+    otp: string;
+    newPassword: string;
 }
 
 export interface ILoginPayload {

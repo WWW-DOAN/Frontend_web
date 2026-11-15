@@ -9,6 +9,13 @@ import {
   IRegisterPayload,
   IRegisterResponse,
   IUpdateUserPayload,
+  IRegisterSendOtpPayload,
+  IRegisterVerifyOtpPayload,
+  ILoginSendOtpPayload,
+  ILoginVerifyOtpPayload,
+  IForgotPasswordSendOtpPayload,
+  IForgotPasswordResetPayload,
+  ISendOtpResponse,
 } from "../interface/auth-interface";
 
 export const authService = {
@@ -18,8 +25,44 @@ export const authService = {
     });
   },
 
+  registerSendOtp(body: IRegisterSendOtpPayload) {
+    return http.post<ISendOtpResponse>(API.API_AUTH_REGISTER_SEND_OTP, body, {
+      skipAuth: true,
+    });
+  },
+
+  registerVerifyOtp(body: IRegisterVerifyOtpPayload) {
+    return http.post<IAuthResponse>(API.API_AUTH_REGISTER_VERIFY_OTP, body, {
+      skipAuth: true,
+    });
+  },
+
   authLogin(body: ILoginPayload) {
     return http.post<IApiResponse<IAuthResponse>>(API.API_AUTH_LOGIN, body, {
+      skipAuth: true,
+    });
+  },
+
+  loginSendOtp(body: ILoginSendOtpPayload) {
+    return http.post<ISendOtpResponse>(API.API_AUTH_LOGIN_SEND_OTP, body, {
+      skipAuth: true,
+    });
+  },
+
+  loginVerifyOtp(body: ILoginVerifyOtpPayload) {
+    return http.post<IAuthResponse>(API.API_AUTH_LOGIN_VERIFY_OTP, body, {
+      skipAuth: true,
+    });
+  },
+
+  forgotPasswordSendOtp(body: IForgotPasswordSendOtpPayload) {
+    return http.post<ISendOtpResponse>(API.API_AUTH_FORGOT_PASSWORD_SEND_OTP, body, {
+      skipAuth: true,
+    });
+  },
+
+  forgotPasswordReset(body: IForgotPasswordResetPayload) {
+    return http.post<{ success: boolean; message: string }>(API.API_AUTH_FORGOT_PASSWORD_RESET, body, {
       skipAuth: true,
     });
   },

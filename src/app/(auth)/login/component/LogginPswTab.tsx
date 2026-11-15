@@ -4,15 +4,12 @@ import * as React from "react";
 import { Box, Grid, Stack, Typography } from "@mui/material";
 import EmailRoundedIcon from "@mui/icons-material/EmailRounded";
 import HttpsRoundedIcon from "@mui/icons-material/HttpsRounded";
-import { TabContext } from "@mui/lab";
-
 import {
     AuthTextField,
     GridIcon,
     GridPswFrm,
     HelperTextAuth,
     LoginButton,
-    Panel,
     ToRegisPage,
 } from "../../Auth.styles";
 import { FormikLike } from "@/src/common/interface/formik-interface";
@@ -34,17 +31,16 @@ export interface LoginPasswordTabProps {
     loading?: boolean;
     errorMsg?: string | null;
     onGoRegister: () => void;
+    onForgotPassword?: () => void;
 }
 
 export default function LoginPasswordTab(props: LoginPasswordTabProps) {
-    const { formik, loading, errorMsg, onGoRegister } = props;
+    const { formik, loading, errorMsg, onGoRegister, onForgotPassword } = props;
     const Trans = useTrans();
 
     return (
-        <TabContext value="loginPsw">
-            <Panel value="loginPsw">
-                <form autoComplete="off" onSubmit={formik.handleSubmit}>
-                <PasswordFormStyled>
+        <form autoComplete="off" onSubmit={formik.handleSubmit}>
+            <PasswordFormStyled>
                     {/* EMAIL */}
                     <Box>
                         <GridPswFrm container size={12}>
@@ -103,6 +99,22 @@ export default function LoginPasswordTab(props: LoginPasswordTabProps) {
                             </Grid>
                         )}
                     </Box>
+
+                    <Box sx={{ display: "flex", justifyContent: "flex-end", mt: -0.5 }}>
+                        <Typography
+                            variant="body2"
+                            onClick={onForgotPassword}
+                            sx={{
+                                color: "#0068FF",
+                                cursor: "pointer",
+                                fontSize: 13,
+                                fontWeight: 500,
+                                "&:hover": { textDecoration: "underline" },
+                            }}
+                        >
+                            {Trans("LOGIN.FORGOT_PASSWORD")}
+                        </Typography>
+                    </Box>
                     {errorMsg ? (
                         <Typography color="error" fontSize={13}>
                             {errorMsg}
@@ -126,8 +138,6 @@ export default function LoginPasswordTab(props: LoginPasswordTabProps) {
                         {Trans("LOGIN.NO_ACCOUNT")}
                     </ToRegisPage>
                 </PasswordFormStyled>
-                </form>
-            </Panel>
-        </TabContext>
+        </form>
     );
 }

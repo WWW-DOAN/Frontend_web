@@ -25,6 +25,7 @@ export interface FormRegisProps {
   formik: FormikLike;
   onGoLogin: () => void;
   errorMsg?: string | null;
+  loading?: boolean;
 }
 
 export default function FormRegis(props: FormRegisProps) {
@@ -33,6 +34,7 @@ export default function FormRegis(props: FormRegisProps) {
     formik,
     onGoLogin,
     errorMsg,
+    loading,
   } = props;
 
 
@@ -223,8 +225,8 @@ export default function FormRegis(props: FormRegisProps) {
           </Typography>
         ) : null}
 
-        <LoginButton type="submit" fullWidth sx={{ mt: 1 }}>
-          Đăng ký
+        <LoginButton type="submit" fullWidth sx={{ mt: 1 }} disabled={Boolean(loading || (formik as any).isSubmitting)}>
+          {loading || (formik as any).isSubmitting ? "Đang gửi mã..." : "Tiếp tục"}
         </LoginButton>
 
         <Forgot onClick={onGoLogin}>Đã có tài khoản? Đăng nhập</Forgot>

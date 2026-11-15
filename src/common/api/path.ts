@@ -1,12 +1,17 @@
 export const API = {
     /* ================= AUTH ================= */
     API_AUTH_REGISTER: "/api/auth/register",
+    API_AUTH_REGISTER_SEND_OTP: "/api/auth/register/send-otp",
+    API_AUTH_REGISTER_VERIFY_OTP: "/api/auth/register/verify-otp",
     API_AUTH_LOGIN: "/api/auth/login",
+    API_AUTH_LOGIN_SEND_OTP: "/api/auth/login/send-otp",
+    API_AUTH_LOGIN_VERIFY_OTP: "/api/auth/login/verify-otp",
+    API_AUTH_FORGOT_PASSWORD_SEND_OTP: "/api/auth/forgot-password/send-otp",
+    API_AUTH_FORGOT_PASSWORD_RESET: "/api/auth/forgot-password/reset",
     API_AUTH_REFRESH: "/api/auth/refresh",
     API_AUTH_LOGOUT: "/api/auth/logout",
     API_AUTH_CHANGE_PASSWORD: "/api/auth/change-password",
-    API_AUTH_RESET_PASSWORD: "/api/auth/reset-password",
-    // API_AUTH_FORGOT_PASSWORD: "/api/auth/forgot-password",
+    API_AUTH_RESET_PASSWORD: "/api/auth/forgot-password/reset",
 
     
 
