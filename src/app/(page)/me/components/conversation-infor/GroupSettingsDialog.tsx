@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   Avatar,
   Box,
@@ -30,6 +30,21 @@ import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
 import ContentCopyRoundedIcon from "@mui/icons-material/ContentCopyRounded";
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 import CheckRoundedIcon from "@mui/icons-material/CheckRounded";
+import ChatBubbleOutlineRoundedIcon from "@mui/icons-material/ChatBubbleOutlineRounded";
+import PermMediaOutlinedIcon from "@mui/icons-material/PermMediaOutlined";
+import PollOutlinedIcon from "@mui/icons-material/PollOutlined";
+import PushPinOutlinedIcon from "@mui/icons-material/PushPinOutlined";
+import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
+import PersonAddAlt1OutlinedIcon from "@mui/icons-material/PersonAddAlt1Outlined";
+import HowToRegOutlinedIcon from "@mui/icons-material/HowToRegOutlined";
+import LinkRoundedIcon from "@mui/icons-material/LinkRounded";
+import HistoryRoundedIcon from "@mui/icons-material/HistoryRounded";
+import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
+import TimerOutlinedIcon from "@mui/icons-material/TimerOutlined";
+import DeleteForeverOutlinedIcon from "@mui/icons-material/DeleteForeverOutlined";
+import WorkspacePremiumRoundedIcon from "@mui/icons-material/WorkspacePremiumRounded";
+import VerifiedUserRoundedIcon from "@mui/icons-material/VerifiedUserRounded";
+import PersonOutlineRoundedIcon from "@mui/icons-material/PersonOutlineRounded";
 import { styled } from "@mui/material/styles";
 import { toast } from "react-toastify";
 
@@ -164,6 +179,9 @@ function formatRequestTime(value: string | number | undefined) {
 }
 
 interface SwitchRowProps {
+  icon?: ReactNode;
+  iconBg?: string;
+  iconColor?: string;
   title: string;
   description: string;
   checked: boolean;
@@ -172,14 +190,44 @@ interface SwitchRowProps {
   onChange: (checked: boolean) => void;
 }
 
-function SwitchRow({ title, description, checked, disabled, loading, onChange }: SwitchRowProps) {
+function SwitchRow({
+  icon,
+  iconBg = "#EFF6FF",
+  iconColor = "#0068FF",
+  title,
+  description,
+  checked,
+  disabled,
+  loading,
+  onChange,
+}: SwitchRowProps) {
   return (
     <SettingRow>
-      <Box sx={{ pr: 2, minWidth: 0 }}>
-        <Typography sx={{ fontSize: 14, fontWeight: 600, color: "#111827" }}>{title}</Typography>
-        <Typography sx={{ fontSize: 12, color: "#6B7280", mt: 0.25, lineHeight: 1.5 }}>
-          {description}
-        </Typography>
+      <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1.5, pr: 2, minWidth: 0 }}>
+        {icon && (
+          <Box
+            sx={{
+              width: 34,
+              height: 34,
+              borderRadius: 2,
+              bgcolor: iconBg,
+              color: iconColor,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+              mt: 0.2,
+            }}
+          >
+            {icon}
+          </Box>
+        )}
+        <Box sx={{ minWidth: 0 }}>
+          <Typography sx={{ fontSize: 14, fontWeight: 600, color: "#111827" }}>{title}</Typography>
+          <Typography sx={{ fontSize: 12, color: "#6B7280", mt: 0.25, lineHeight: 1.5 }}>
+            {description}
+          </Typography>
+        </Box>
       </Box>
       {loading ? (
         <CircularProgress size={20} sx={{ mr: 1.5, flexShrink: 0 }} />
@@ -236,7 +284,14 @@ export default function GroupSettingsDialog({
   const [confirmDisband, setConfirmDisband] = useState(false);
   const [disbanding, setDisbanding] = useState(false);
 
-  const roleLabel = isOwner ? "👑 Trưởng nhóm" : canManage ? "⭐ Phó nhóm" : "👤 Thành viên";
+  const roleLabel = isOwner ? "Trưởng nhóm" : canManage ? "Phó nhóm" : "Thành viên";
+  const roleIcon = isOwner ? (
+    <WorkspacePremiumRoundedIcon sx={{ fontSize: "16px !important", color: "#B45309 !important" }} />
+  ) : canManage ? (
+    <VerifiedUserRoundedIcon sx={{ fontSize: "16px !important", color: "#0369A1 !important" }} />
+  ) : (
+    <PersonOutlineRoundedIcon sx={{ fontSize: "16px !important", color: "#4B5563 !important" }} />
+  );
 
   const loadSettings = useCallback(async () => {
     if (!conversationId) return;
@@ -539,6 +594,7 @@ export default function GroupSettingsDialog({
               </Typography>
             </Box>
             <Chip
+              icon={roleIcon}
               label={roleLabel}
               size="small"
               sx={{
@@ -626,7 +682,10 @@ export default function GroupSettingsDialog({
                   </Typography>
                 </SectionHeader>
                 <SwitchRow
-                  title="💬 Gửi tin nhắn văn bản"
+                  icon={<ChatBubbleOutlineRoundedIcon sx={{ fontSize: 18 }} />}
+                  iconBg="#EFF6FF"
+                  iconColor="#0068FF"
+                  title="Gửi tin nhắn văn bản"
                   description="Cho phép thành viên thường gửi tin nhắn trong nhóm"
                   checked={settings.permissions.canSendMessage}
                   disabled={!canManage}
@@ -635,7 +694,10 @@ export default function GroupSettingsDialog({
                 />
                 <Divider />
                 <SwitchRow
-                  title="🖼️ Gửi ảnh, video, tập tin"
+                  icon={<PermMediaOutlinedIcon sx={{ fontSize: 18 }} />}
+                  iconBg="#ECFDF5"
+                  iconColor="#059669"
+                  title="Gửi ảnh, video, tập tin"
                   description="Cho phép thành viên gửi hình ảnh, video, tệp đính kèm và tin nhắn thoại"
                   checked={settings.permissions.canSendMedia}
                   disabled={!canManage}
@@ -644,7 +706,10 @@ export default function GroupSettingsDialog({
                 />
                 <Divider />
                 <SwitchRow
-                  title="📊 Tạo bình chọn, ghi chú"
+                  icon={<PollOutlinedIcon sx={{ fontSize: 18 }} />}
+                  iconBg="#EEF2FF"
+                  iconColor="#4F46E5"
+                  title="Tạo bình chọn, ghi chú"
                   description="Cho phép thành viên tạo bình chọn, ghi chú và nhắc hẹn trong nhóm"
                   checked={settings.permissions.canCreatePolls}
                   disabled={!canManage}
@@ -653,7 +718,10 @@ export default function GroupSettingsDialog({
                 />
                 <Divider />
                 <SwitchRow
-                  title="📌 Ghim tin nhắn"
+                  icon={<PushPinOutlinedIcon sx={{ fontSize: 18 }} />}
+                  iconBg="#FFF7ED"
+                  iconColor="#EA580C"
+                  title="Ghim tin nhắn"
                   description="Cho phép thành viên ghim tin nhắn và ghi chú lên đầu đoạn chat"
                   checked={settings.permissions.canPinMessage}
                   disabled={!canManage}
@@ -662,7 +730,10 @@ export default function GroupSettingsDialog({
                 />
                 <Divider />
                 <SwitchRow
-                  title="✏️ Đổi tên & ảnh đại diện nhóm"
+                  icon={<EditOutlinedIcon sx={{ fontSize: 18 }} />}
+                  iconBg="#F5F3FF"
+                  iconColor="#7C3AED"
+                  title="Đổi tên & ảnh đại diện nhóm"
                   description="Cho phép thành viên thay đổi tên và ảnh đại diện của nhóm"
                   checked={settings.permissions.canUpdateGroupInfo}
                   disabled={!canManage}
@@ -671,7 +742,10 @@ export default function GroupSettingsDialog({
                 />
                 <Divider />
                 <SwitchRow
-                  title="👥 Thêm thành viên mới"
+                  icon={<PersonAddAlt1OutlinedIcon sx={{ fontSize: 18 }} />}
+                  iconBg="#F0FDF4"
+                  iconColor="#16A34A"
+                  title="Thêm thành viên mới"
                   description="Cho phép thành viên mời thêm người khác vào nhóm"
                   checked={settings.permissions.canAddMembers}
                   disabled={!canManage}
@@ -691,7 +765,10 @@ export default function GroupSettingsDialog({
                     </Typography>
                   </SectionHeader>
                   <SwitchRow
-                    title="🛡️ Duyệt thành viên mới"
+                    icon={<HowToRegOutlinedIcon sx={{ fontSize: 18 }} />}
+                    iconBg="#EEF2FF"
+                    iconColor="#4338CA"
+                    title="Duyệt thành viên mới"
                     description="Yêu cầu Quản trị viên phê duyệt trước khi thành viên mới vào nhóm"
                     checked={settings.policies.inviteApproval}
                     disabled={!canManage}
@@ -793,7 +870,10 @@ export default function GroupSettingsDialog({
                     </Typography>
                   </SectionHeader>
                   <SwitchRow
-                    title="🔗 Mời vào nhóm bằng liên kết"
+                    icon={<LinkRoundedIcon sx={{ fontSize: 18 }} />}
+                    iconBg="#EFF6FF"
+                    iconColor="#2563EB"
+                    title="Mời vào nhóm bằng liên kết"
                     description="Cho phép người khác tham gia nhóm thông qua liên kết mời"
                     checked={settings.policies.allowJoinViaLink}
                     disabled={!canManage}
@@ -846,7 +926,10 @@ export default function GroupSettingsDialog({
                   )}
                   <Divider />
                   <SwitchRow
-                    title="📜 Xem tin nhắn cũ"
+                    icon={<HistoryRoundedIcon sx={{ fontSize: 18 }} />}
+                    iconBg="#FEF3C7"
+                    iconColor="#D97706"
+                    title="Xem tin nhắn cũ"
                     description="Cho phép thành viên mới đọc tin nhắn trước khi tham gia nhóm"
                     checked={settings.policies.allowViewPastMessages}
                     disabled={!canManage}
@@ -855,7 +938,10 @@ export default function GroupSettingsDialog({
                   />
                   <Divider />
                   <SwitchRow
-                    title="🙈 Ẩn danh sách thành viên"
+                    icon={<VisibilityOffOutlinedIcon sx={{ fontSize: 18 }} />}
+                    iconBg="#F3F4F6"
+                    iconColor="#4B5563"
+                    title="Ẩn danh sách thành viên"
                     description="Chỉ Trưởng nhóm và Phó nhóm mới xem được danh sách thành viên"
                     checked={settings.policies.hideMemberList}
                     disabled={!canManage}
@@ -916,13 +1002,33 @@ export default function GroupSettingsDialog({
                               {isSelf ? " (Bạn)" : ""}
                             </Typography>
                             {memberRole === "OWNER" && (
-                              <Typography sx={{ fontSize: 11.5, color: "#B45309" }}>
-                                👑 Trưởng nhóm
+                              <Typography
+                                sx={{
+                                  fontSize: 11.5,
+                                  color: "#B45309",
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: 0.4,
+                                  fontWeight: 500,
+                                }}
+                              >
+                                <WorkspacePremiumRoundedIcon sx={{ fontSize: 14 }} />
+                                Trưởng nhóm
                               </Typography>
                             )}
                             {memberRole === "ADMIN" && (
-                              <Typography sx={{ fontSize: 11.5, color: "#0369A1" }}>
-                                ⭐ Phó nhóm
+                              <Typography
+                                sx={{
+                                  fontSize: 11.5,
+                                  color: "#0369A1",
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: 0.4,
+                                  fontWeight: 500,
+                                }}
+                              >
+                                <VerifiedUserRoundedIcon sx={{ fontSize: 14 }} />
+                                Phó nhóm
                               </Typography>
                             )}
                           </Box>
@@ -982,13 +1088,31 @@ export default function GroupSettingsDialog({
                     </Typography>
                   </SectionHeader>
                   <SettingRow>
-                    <Box sx={{ pr: 2 }}>
-                      <Typography sx={{ fontSize: 14, fontWeight: 600, color: "#111827" }}>
-                        ⏱️ Tin nhắn tự xóa
-                      </Typography>
-                      <Typography sx={{ fontSize: 12, color: "#6B7280", mt: 0.25 }}>
-                        Tự động xóa tin nhắn sau khoảng thời gian đã đặt
-                      </Typography>
+                    <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1.5, pr: 2 }}>
+                      <Box
+                        sx={{
+                          width: 34,
+                          height: 34,
+                          borderRadius: 2,
+                          bgcolor: "#EFF6FF",
+                          color: "#0068FF",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          flexShrink: 0,
+                          mt: 0.2,
+                        }}
+                      >
+                        <TimerOutlinedIcon sx={{ fontSize: 18 }} />
+                      </Box>
+                      <Box>
+                        <Typography sx={{ fontSize: 14, fontWeight: 600, color: "#111827" }}>
+                          Tin nhắn tự xóa
+                        </Typography>
+                        <Typography sx={{ fontSize: 12, color: "#6B7280", mt: 0.25 }}>
+                          Tự động xóa tin nhắn sau khoảng thời gian đã đặt
+                        </Typography>
+                      </Box>
                     </Box>
                     {savingKey === "messageRetention" ? (
                       <CircularProgress size={20} sx={{ mr: 1.5 }} />
@@ -1013,18 +1137,37 @@ export default function GroupSettingsDialog({
                 {isOwner && (
                   <SectionCard sx={{ borderColor: "#FECACA" }}>
                     <SectionHeader sx={{ bgcolor: "#FEF2F2", borderColor: "#FECACA" }}>
+                      <WarningAmberOutlinedIcon sx={{ fontSize: 17, color: "#B91C1C" }} />
                       <Typography sx={{ fontSize: 13, fontWeight: 700, color: "#B91C1C" }}>
                         Vùng nguy hiểm
                       </Typography>
                     </SectionHeader>
                     <SettingRow>
-                      <Box sx={{ pr: 2 }}>
-                        <Typography sx={{ fontSize: 14, fontWeight: 600, color: "#111827" }}>
-                          ⚠️ Giải tán nhóm
-                        </Typography>
-                        <Typography sx={{ fontSize: 12, color: "#6B7280", mt: 0.25 }}>
-                          Xóa vĩnh viễn nhóm và toàn bộ tin nhắn. Không thể hoàn tác.
-                        </Typography>
+                      <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1.5, pr: 2 }}>
+                        <Box
+                          sx={{
+                            width: 34,
+                            height: 34,
+                            borderRadius: 2,
+                            bgcolor: "#FEE2E2",
+                            color: "#DC2626",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            flexShrink: 0,
+                            mt: 0.2,
+                          }}
+                        >
+                          <DeleteForeverOutlinedIcon sx={{ fontSize: 18 }} />
+                        </Box>
+                        <Box>
+                          <Typography sx={{ fontSize: 14, fontWeight: 600, color: "#111827" }}>
+                            Giải tán nhóm
+                          </Typography>
+                          <Typography sx={{ fontSize: 12, color: "#6B7280", mt: 0.25 }}>
+                            Xóa vĩnh viễn nhóm và toàn bộ tin nhắn. Không thể hoàn tác.
+                          </Typography>
+                        </Box>
                       </Box>
                       <Button
                         variant="contained"

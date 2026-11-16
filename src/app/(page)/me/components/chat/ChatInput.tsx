@@ -41,6 +41,7 @@ import MoreHorizRoundedIcon from "@mui/icons-material/MoreHorizRounded";
 import SmartToyOutlinedIcon from "@mui/icons-material/SmartToyOutlined";
 import AutoAwesomeOutlinedIcon from "@mui/icons-material/AutoAwesomeOutlined";
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
+import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import dynamic from "next/dynamic";
 import InsertEmoticonRoundedIcon from "@mui/icons-material/InsertEmoticonRounded";
 import { EmojiClickData } from "emoji-picker-react";
@@ -858,7 +859,10 @@ export default function ChatInput({
           sx={{
             py: 1.5,
             px: 2,
-            textAlign: "center",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 0.75,
             bgcolor: "#F3F4F6",
             borderRadius: 2,
             color: "#6B7280",
@@ -866,7 +870,8 @@ export default function ChatInput({
             fontWeight: 500,
           }}
         >
-          Chỉ Trưởng nhóm và Phó nhóm mới có quyền gửi tin nhắn trong nhóm này.
+          <LockOutlinedIcon sx={{ fontSize: 16 }} />
+          <span>Chỉ Trưởng nhóm và Phó nhóm mới có quyền gửi tin nhắn trong nhóm này.</span>
         </Box>
       </ChatInputContainer>
     );
