@@ -51,6 +51,7 @@ import { toast } from "react-toastify";
 import { chatService } from "@/src/common/service/chat-service";
 import { useChatStore } from "@/src/common/store/useChatStore";
 import { resolveMediaUrl } from "@/src/common/helpers/displayMedia.helpers";
+import { useTrans } from "@/src/common/utilities/hook/trans";
 import type { GroupJoinRequestDto } from "@/src/common/interface/chat-interface";
 
 interface GroupSettingsDialogProps {
@@ -250,6 +251,7 @@ export default function GroupSettingsDialog({
   onClose,
   isAdmin,
 }: GroupSettingsDialogProps) {
+  const t = useTrans();
   const listConversation = useChatStore((s) => s.listConversation);
   const conversationDetail = useChatStore((s) => s.conversationDetailById?.[conversationId]);
   const fetchListConversation = useChatStore((s) => s.fetchListConversation);
@@ -284,7 +286,11 @@ export default function GroupSettingsDialog({
   const [confirmDisband, setConfirmDisband] = useState(false);
   const [disbanding, setDisbanding] = useState(false);
 
-  const roleLabel = isOwner ? "Trưởng nhóm" : canManage ? "Phó nhóm" : "Thành viên";
+  const roleLabel = isOwner
+    ? t("CONVO.ROLE_OWNER")
+    : canManage
+      ? t("CONVO.ROLE_ADMIN")
+      : t("CONVO.MEMBERS");
   const roleIcon = isOwner ? (
     <WorkspacePremiumRoundedIcon sx={{ fontSize: "16px !important", color: "#B45309 !important" }} />
   ) : canManage ? (
@@ -1013,7 +1019,7 @@ export default function GroupSettingsDialog({
                                 }}
                               >
                                 <WorkspacePremiumRoundedIcon sx={{ fontSize: 14 }} />
-                                Trưởng nhóm
+                                {t("CONVO.ROLE_OWNER")}
                               </Typography>
                             )}
                             {memberRole === "ADMIN" && (
@@ -1028,7 +1034,7 @@ export default function GroupSettingsDialog({
                                 }}
                               >
                                 <VerifiedUserRoundedIcon sx={{ fontSize: 14 }} />
-                                Phó nhóm
+                                {t("CONVO.ROLE_ADMIN")}
                               </Typography>
                             )}
                           </Box>

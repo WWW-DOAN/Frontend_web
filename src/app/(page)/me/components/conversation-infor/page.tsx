@@ -313,10 +313,10 @@ export default function InfConvColumn({
     const memberName = member?.displayName || member?.username || memberId;
     try {
       await chatService.updateMemberRole(conversationId, memberId, 'ADMIN');
-      toast.success(`Đã phong "${memberName}" làm quản trị viên`);
+      toast.success(`Đã bổ nhiệm "${memberName}" làm phó nhóm`);
       await refresh();
     } catch (error: any) {
-      const message = error?.message || error?.response?.data?.message || "Không thể phong quản trị viên";
+      const message = error?.message || error?.response?.data?.message || "Không thể bổ nhiệm phó nhóm";
       toast.error(message);
     }
   };
@@ -326,10 +326,10 @@ export default function InfConvColumn({
     const memberName = member?.displayName || member?.username || memberId;
     try {
       await chatService.updateMemberRole(conversationId, memberId, 'MEMBER');
-      toast.success(`Đã hạ quyền "${memberName}" xuống thành viên`);
+      toast.success(`Đã gỡ quyền phó nhóm của "${memberName}"`);
       await refresh();
     } catch (error: any) {
-      const message = error?.message || error?.response?.data?.message || "Không thể hạ quyền quản trị viên";
+      const message = error?.message || error?.response?.data?.message || "Không thể gỡ quyền phó nhóm";
       toast.error(message);
     }
   };
