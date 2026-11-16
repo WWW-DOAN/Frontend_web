@@ -1,16 +1,15 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } from "react";
-import { Box, Typography, Collapse, IconButton } from "@mui/material";
+import { Box, Chip, Typography } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import PollOutlinedIcon from "@mui/icons-material/PollOutlined";
-import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
-import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
+import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 
 import ChatHeader from "./ChatHeader";
 import MessageList from "./MessageList";
 import ChatInput from "./ChatInput";
-import PollItem from "./PollItem";
+import PollsListDialog from "./PollsListDialog";
 import CreatePollModal from "./CreatePollModal";
 import EditPollModal from "./EditPollModal";
 import ShareContactModal from "./ShareContactModal";
@@ -164,8 +163,13 @@ export default function ChatPanel({
   const fetchPolls = useCallback(async () => {
     if (!conversationId) return;
     try {
-      const res = await chatService.getPolls(conversationId);
-      const list = res?.data?.data || res?.data || [];
+      const res: any = await chatService.getPolls(conversationId);
+      const list =
+        res?.payload?.data ??
+        (Array.isArray(res?.payload) ? res.payload : undefined) ??
+        res?.data?.data ??
+        res?.data ??
+        [];
       setPolls(Array.isArray(list) ? list : []);
     } catch {
       // silently ignore
@@ -180,6 +184,18 @@ export default function ChatPanel({
       setShowPollsList(false);
     }
   }, [conversationId, isGroup, fetchPolls]);
+
+  useEffect(() => {
+    if (!isGroup || !conversationId) return;
+    const handlePollUpdated = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (!detail?.conversationId || detail.conversationId === conversationId) {
+        fetchPolls();
+      }
+    };
+    window.addEventListener("chat:poll-updated", handlePollUpdated);
+    return () => window.removeEventListener("chat:poll-updated", handlePollUpdated);
+  }, [isGroup, conversationId, fetchPolls]);
 
   useEffect(() => {
     const handleOpenModal = (e: Event) => {
@@ -442,48 +458,82 @@ export default function ChatPanel({
         />
       )}
 
-      {isGroup && polls.length > 0 && (
-        <Box sx={{ borderBottom: "1px solid #E5E7EB", bgcolor: "#F8FAFC" }}>
+      {isGroup && polls.length > 0 && (() => {
+        const now = Date.now();
+        const openPolls = polls.filter(
+          (p) => p.status === "OPEN" && (!p.expiresAt || new Date(p.expiresAt).getTime() >= now)
+        );
+        const featuredPoll = openPolls[0] || polls[0];
+        const totalVoters =
+          featuredPoll.totalVoters ??
+          featuredPoll.options.reduce((sum, o) => sum + (o.votes || 0), 0);
+
+        return (
           <Box
+            onClick={() => setShowPollsList(true)}
             sx={{
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
+              gap: 1.5,
               px: 2,
               py: 1,
+              borderBottom: "1px solid #E5E7EB",
+              bgcolor: "#FFFFFF",
               cursor: "pointer",
-              "&:hover": { bgcolor: "#F1F5F9" },
+              transition: "background-color 0.15s ease",
+              "&:hover": { bgcolor: "#F8FAFC" },
             }}
-            onClick={() => setShowPollsList((prev) => !prev)}
           >
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-              <PollOutlinedIcon sx={{ fontSize: 18, color: "#005AE0" }} />
-              <Typography sx={{ fontSize: 13, fontWeight: 600, color: "#1E293B" }}>
-                Bình chọn nhóm ({polls.filter((p) => p.status === "OPEN").length} đang mở)
-              </Typography>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1.25, minWidth: 0, flex: 1 }}>
+              <Box
+                sx={{
+                  width: 30,
+                  height: 30,
+                  borderRadius: 1.5,
+                  bgcolor: "#EFF6FF",
+                  color: "#0068FF",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
+              >
+                <PollOutlinedIcon sx={{ fontSize: 18 }} />
+              </Box>
+              <Box sx={{ minWidth: 0, flex: 1 }}>
+                <Typography
+                  sx={{ fontSize: 13, fontWeight: 600, color: "#111827" }}
+                  noWrap
+                >
+                  {featuredPoll.question}
+                </Typography>
+                <Typography sx={{ fontSize: 11.5, color: "#64748B" }} noWrap>
+                  {openPolls.length > 0
+                    ? `${totalVoters} người đã bình chọn${openPolls.length > 1 ? ` • +${openPolls.length - 1} bình chọn khác` : ""}`
+                    : `${polls.length} bình chọn đã kết thúc`}
+                </Typography>
+              </Box>
             </Box>
-            <IconButton size="small">
-              {showPollsList ? <KeyboardArrowUpIcon fontSize="small" /> : <KeyboardArrowDownIcon fontSize="small" />}
-            </IconButton>
+
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, flexShrink: 0 }}>
+              <Chip
+                size="small"
+                label={openPolls.length > 0 ? "Bình chọn" : "Xem kết quả"}
+                sx={{
+                  height: 24,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  bgcolor: "#EFF6FF",
+                  color: "#0068FF",
+                  cursor: "pointer",
+                }}
+              />
+              <ChevronRightRoundedIcon sx={{ fontSize: 18, color: "#94A3B8" }} />
+            </Box>
           </Box>
-          <Collapse in={showPollsList}>
-            <Box sx={{ px: 2, pb: 2, maxHeight: 320, overflowY: "auto" }}>
-              {polls.map((poll) => (
-                <PollItem
-                  key={poll.id}
-                  poll={poll}
-                  conversationId={conversationId}
-                  onVote={fetchPolls}
-                  onWithdraw={fetchPolls}
-                  onClose={fetchPolls}
-                  onEdit={() => setEditingPoll(poll)}
-                  onDelete={fetchPolls}
-                />
-              ))}
-            </Box>
-          </Collapse>
-        </Box>
-      )}
+        );
+      })()}
 
       <MessageListWrap>
         <MessageList
@@ -499,6 +549,9 @@ export default function ChatPanel({
           showScrollbar={showScrollbar}
           onForwardMessage={(msgId, convId) => setForwardTarget({ messageId: msgId, conversationId: convId })}
           onEditMessage={editMessage}
+          polls={polls}
+          onRefreshPolls={fetchPolls}
+          onEditPoll={(poll) => setEditingPoll(poll)}
           onImageClick={(url, mediaList, index) => {
             const items: MediaPreviewItem[] = (mediaList || []).map((att) => {
               const contentType = (att.contentType || (att as any).content_type || "").toLowerCase();
@@ -568,7 +621,46 @@ export default function ChatPanel({
         open={showCreatePollModal}
         conversationId={conversationId}
         onClose={() => setShowCreatePollModal(false)}
-        onCreated={fetchPolls}
+        onCreated={async (createdPoll, shouldPin) => {
+          await fetchPolls();
+          if (createdPoll?.id) {
+            const pollAttachment: ChatAttachmentPayload = {
+              key: createdPoll.id,
+              name: createdPoll.question,
+              url: "",
+              size: 0,
+              type: "poll",
+              contentType: "application/poll",
+              content_type: "application/poll",
+              visibility: "public",
+            };
+            const sent: any = await sendMessage(
+              conversationId,
+              `[Bình chọn] ${createdPoll.question}`,
+              [pollAttachment]
+            );
+            const canPin = isGroupAdmin || groupPermissions.canPinMessage !== false;
+            if (shouldPin && canPin && sent?.messageId && sent?.createdAt) {
+              await pinMessage(conversationId, sent.messageId, sent.createdAt).catch(() => {});
+            }
+          }
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(
+              new CustomEvent("chat:poll-updated", { detail: { conversationId } })
+            );
+          }
+        }}
+      />
+
+      <PollsListDialog
+        open={showPollsList}
+        conversationId={conversationId}
+        polls={polls}
+        canCreatePoll={canCreatePoll}
+        onClose={() => setShowPollsList(false)}
+        onRefresh={fetchPolls}
+        onEditPoll={(poll) => setEditingPoll(poll)}
+        onOpenCreatePoll={() => setShowCreatePollModal(true)}
       />
 
       <EditPollModal

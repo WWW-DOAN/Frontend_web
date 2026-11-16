@@ -304,6 +304,22 @@ export const initChat = (accessToken: string, currentUserId: string) => {
       return;
     }
 
+    const rawEventType = raw?.system_event_type ?? raw?.systemEventType;
+    if (rawEventType === "POLL_CREATED" || rawEventType === "POLL_UPDATED") {
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("chat:poll-updated", {
+            detail: {
+              conversationId,
+              pollId: raw?.metadata?.poll_id,
+              action: raw?.metadata?.action,
+            },
+          })
+        );
+      }
+      return;
+    }
+
     const systemMessage: UiMessage = {
       messageId,
       conversationId,

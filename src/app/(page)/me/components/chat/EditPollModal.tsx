@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { ConversationPoll } from "@/src/common/interface/conversation-interface";
 import { chatService } from "@/src/common/service/chat-service";
 import {
@@ -13,9 +14,10 @@ import {
   Typography,
   IconButton,
   Divider,
+  CircularProgress,
 } from "@mui/material";
-import { Close } from "@mui/icons-material";
-import { useState } from "react";
+import CloseIcon from "@mui/icons-material/Close";
+import PollOutlinedIcon from "@mui/icons-material/PollOutlined";
 import { toast } from "react-toastify";
 
 interface EditPollModalProps {
@@ -33,13 +35,14 @@ export default function EditPollModal({
   onClose,
   onUpdated,
 }: EditPollModalProps) {
-  const [question, setQuestion] = useState(poll?.question ?? "");
+  const [question, setQuestion] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
-  // Reset when poll changes
-  if (poll && question !== poll.question && !isSaving) {
-    setQuestion(poll.question);
-  }
+  useEffect(() => {
+    if (open && poll) {
+      setQuestion(poll.question || "");
+    }
+  }, [open, poll]);
 
   const handleSave = async () => {
     if (!poll || !question.trim()) return;
@@ -51,8 +54,8 @@ export default function EditPollModal({
       toast.success("Đã cập nhật câu hỏi bình chọn");
       onUpdated();
       onClose();
-    } catch {
-      toast.error("Không thể cập nhật cuộc bình chọn");
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Không thể cập nhật cuộc bình chọn");
     } finally {
       setIsSaving(false);
     }
@@ -61,69 +64,94 @@ export default function EditPollModal({
   if (!poll) return null;
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <Typography fontWeight={600}>Chỉnh sửa cuộc bình chọn</Typography>
-        <IconButton onClick={onClose} size="small">
-          <Close />
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="sm"
+      fullWidth
+      slotProps={{ paper: { sx: { borderRadius: 3 } } }}
+    >
+      <DialogTitle
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          py: 1.5,
+          px: 2.5,
+        }}
+      >
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <PollOutlinedIcon sx={{ color: "#0068FF", fontSize: 22 }} />
+          <Typography sx={{ fontSize: 16, fontWeight: 700 }}>
+            Chỉnh sửa bình chọn
+          </Typography>
+        </Box>
+        <IconButton onClick={onClose} size="small" disabled={isSaving}>
+          <CloseIcon fontSize="small" />
         </IconButton>
       </DialogTitle>
       <Divider />
-      <DialogContent sx={{ pt: 2 }}>
+      <DialogContent sx={{ pt: 2, px: 2.5 }}>
         <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
           <TextField
             fullWidth
-            label="Câu hỏi"
+            label="Chủ đề bình chọn"
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
             multiline
             minRows={2}
-            inputProps={{ maxLength: 300 }}
+            maxRows={4}
+            slotProps={{ htmlInput: { maxLength: 300 } }}
             helperText={`${question.length}/300`}
+            disabled={isSaving}
           />
 
           <Box>
-            <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-              Các lựa chọn hiện tại
+            <Typography sx={{ fontSize: 13, fontWeight: 600, color: "#374151", mb: 1 }}>
+              Các phương án hiện tại ({poll.options.length})
             </Typography>
-            {poll.options.map((opt, idx) => (
-              <Box
-                key={opt.id}
-                sx={{
-                  px: 2,
-                  py: 1,
-                  mb: 1,
-                  borderRadius: 1,
-                  border: "1px solid #E5E7EB",
-                  backgroundColor: "#F9FAFB",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 1,
-                }}
-              >
-                <Typography variant="caption" color="text.secondary" sx={{ minWidth: 20 }}>
-                  {idx + 1}.
-                </Typography>
-                <Typography variant="body2">{opt.label}</Typography>
-                <Typography variant="caption" color="text.secondary" sx={{ ml: "auto" }}>
-                  {opt.votes} phiếu
-                </Typography>
-              </Box>
-            ))}
-            <Typography variant="caption" color="text.secondary">
-              * Chỉ có thể chỉnh sửa câu hỏi. Để thêm/xóa lựa chọn, hãy dùng nút trong bình chọn.
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 0.75 }}>
+              {poll.options.map((opt, idx) => (
+                <Box
+                  key={opt.id}
+                  sx={{
+                    px: 1.5,
+                    py: 1,
+                    borderRadius: 2,
+                    border: "1px solid #E5E7EB",
+                    backgroundColor: "#F9FAFB",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 1,
+                  }}
+                >
+                  <Typography sx={{ fontSize: 12.5, color: "#6B7280", minWidth: 20, fontWeight: 600 }}>
+                    {idx + 1}.
+                  </Typography>
+                  <Typography sx={{ fontSize: 13.5, color: "#111827", flex: 1 }}>{opt.label}</Typography>
+                  <Typography sx={{ fontSize: 12, color: "#0068FF", fontWeight: 600 }}>
+                    {opt.votes} phiếu
+                  </Typography>
+                </Box>
+              ))}
+            </Box>
+            <Typography sx={{ fontSize: 11.5, color: "#6B7280", mt: 1, display: "block" }}>
+              * Để thêm phương án mới, sử dụng nút &quot;+ Thêm phương án&quot; ngay trên thẻ bình chọn.
             </Typography>
           </Box>
         </Box>
       </DialogContent>
-      <DialogActions sx={{ px: 3, pb: 2 }}>
-        <Button onClick={onClose} disabled={isSaving}>Hủy</Button>
+      <DialogActions sx={{ px: 2.5, py: 1.5, borderTop: "1px solid #E5E7EB" }}>
+        <Button onClick={onClose} disabled={isSaving} sx={{ textTransform: "none" }}>
+          Hủy
+        </Button>
         <Button
           variant="contained"
           onClick={handleSave}
-          disabled={!question.trim() || question === poll.question || isSaving}
+          disabled={!question.trim() || isSaving}
+          sx={{ textTransform: "none", minWidth: 110 }}
         >
-          {isSaving ? "Đang lưu..." : "Lưu thay đổi"}
+          {isSaving ? <CircularProgress size={18} color="inherit" /> : "Lưu thay đổi"}
         </Button>
       </DialogActions>
     </Dialog>

@@ -30,9 +30,12 @@ import {
 import { styled, alpha, keyframes } from "@mui/material/styles";
 import { getReplyPreview } from "@/src/common/helpers/displayPreviewReply";
 import type { ReactionDto } from "@/src/common/interface/chat-interface";
+import type { ConversationPoll } from "@/src/common/interface/conversation-interface";
 import { useChatStore } from "@/src/common/store/useChatStore";
 import { chatService } from "@/src/common/service/chat-service";
 import { resolveMediaUrl } from "@/src/common/helpers/displayMedia.helpers";
+import PollItem from "./PollItem";
+import PollOutlinedIcon from "@mui/icons-material/PollOutlined";
 
 import InsertDriveFileOutlinedIcon from "@mui/icons-material/InsertDriveFileOutlined";
 import ReplyOutlinedIcon from "@mui/icons-material/ReplyOutlined";
@@ -116,6 +119,10 @@ interface MessageItemProps {
   onEdit?: (newContent: string) => void;
   onReact?: (emoji: string) => void;
   onImageClick?: (url: string, mediaList: Attachment[], index: number) => void;
+  conversationId?: string;
+  polls?: ConversationPoll[];
+  onRefreshPolls?: () => void;
+  onEditPoll?: (poll: ConversationPoll) => void;
 }
 
 const REACTION_EMOJIS = ["👍", "❤️", "😂", "😮", "😢", "😡"];
@@ -735,6 +742,10 @@ const MessageItem: React.FC<MessageItemProps> = ({
   onEdit,
   onReact,
   onImageClick,
+  conversationId,
+  polls,
+  onRefreshPolls,
+  onEditPoll,
 }) => {
   const { t } = useTranslation();
 
@@ -919,6 +930,12 @@ const MessageItem: React.FC<MessageItemProps> = ({
     return a.type?.toLowerCase() === 'todo' || (a as any).content_type === 'todo';
   });
 
+  const pollAttachments = attachments.filter((a) => {
+    const type = a.type?.toLowerCase();
+    const contentType = (a.contentType || a.content_type || '').toLowerCase();
+    return type === 'poll' || contentType === 'application/poll';
+  });
+
   const mediaAttachments = attachments.filter((a) => {
     const type = a.type?.toLowerCase();
     const contentType = (a.contentType || a.content_type || '').toLowerCase();
@@ -931,7 +948,7 @@ const MessageItem: React.FC<MessageItemProps> = ({
     const contentType = (a.contentType || a.content_type || '').toLowerCase();
     const isFile = type === 'document' || type === 'file' ||
       (!contentType.startsWith('image/') && !contentType.startsWith('video/') && !contentType.startsWith('audio/'));
-    return isFile && !mediaAttachments.includes(a) && !audioAttachments.includes(a) && !contactAttachments.includes(a) && !locationAttachments.includes(a) && !reminderAttachments.includes(a) && !noteAttachments.includes(a) && !todoAttachments.includes(a);
+    return isFile && !mediaAttachments.includes(a) && !audioAttachments.includes(a) && !contactAttachments.includes(a) && !locationAttachments.includes(a) && !reminderAttachments.includes(a) && !noteAttachments.includes(a) && !todoAttachments.includes(a) && !pollAttachments.includes(a);
   });
 
   const linkUrls = content.match(/(https?:\/\/[^\s]+)/g) || [];
@@ -1251,7 +1268,7 @@ const MessageItem: React.FC<MessageItemProps> = ({
                 );
               })()}
 
-              {!!content && (
+              {!!content && !(pollAttachments.length > 0 && content.startsWith("[Bình chọn]")) && (
                 isBotSender ? (
                   <Box
                     sx={{
@@ -1768,6 +1785,55 @@ const MessageItem: React.FC<MessageItemProps> = ({
                             {meta.description}
                           </Typography>
                         )}
+                      </Box>
+                    );
+                  })}
+                </Box>
+              )}
+              {pollAttachments.length > 0 && (
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 1, mt: 0.5 }}>
+                  {pollAttachments.map((att, index) => {
+                    const matchedPoll = polls?.find((p) => p.id === att.key);
+                    const targetConvId = conversationId || activeConversationId || "";
+                    if (matchedPoll && targetConvId) {
+                      return (
+                        <PollItem
+                          key={att.key || index}
+                          poll={matchedPoll}
+                          conversationId={targetConvId}
+                          compact
+                          onVote={onRefreshPolls}
+                          onWithdraw={onRefreshPolls}
+                          onClose={onRefreshPolls}
+                          onEdit={onEditPoll ? () => onEditPoll(matchedPoll) : undefined}
+                          onDelete={onRefreshPolls}
+                        />
+                      );
+                    }
+                    return (
+                      <Box
+                        key={att.key || index}
+                        sx={{
+                          p: 1.5,
+                          borderRadius: 2.5,
+                          border: "1px solid #E2E8F0",
+                          bgcolor: "#F8FAFC",
+                          minWidth: 240,
+                          maxWidth: 320,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 1,
+                        }}
+                      >
+                        <PollOutlinedIcon sx={{ color: "#94A3B8", fontSize: 20 }} />
+                        <Box sx={{ minWidth: 0 }}>
+                          <Typography sx={{ fontSize: 13.5, fontWeight: 600, color: "#475569" }}>
+                            {att.name || "Cuộc bình chọn"}
+                          </Typography>
+                          <Typography sx={{ fontSize: 11.5, color: "#94A3B8" }}>
+                            Bình chọn không còn tồn tại hoặc đang tải...
+                          </Typography>
+                        </Box>
                       </Box>
                     );
                   })}

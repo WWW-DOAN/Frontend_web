@@ -4,6 +4,7 @@ import { Box, CircularProgress, Typography, Avatar, Tooltip } from "@mui/materia
 import { styled } from "@mui/material/styles";
 import { useMemo } from "react";
 import { PaginationState, UiMessage, AttachmentDto } from "@/src/common/interface/chat-interface";
+import type { ConversationPoll } from "@/src/common/interface/conversation-interface";
 import { useChatStore } from "@/src/common/store/useChatStore";
 import type { TypingUser } from "@/src/common/store/useChatStore";
 import { pinMessage, toggleReaction, unpinMessage, deleteMessageForMe } from "@/src/common/action/chat.action";
@@ -28,6 +29,9 @@ interface MessageListProps {
   onForwardMessage?: (messageId: string, conversationId: string) => void;
   onEditMessage?: (conversationId: string, messageId: string, newBody: string, createdAt: number) => void;
   onImageClick?: (url: string, mediaList: AttachmentDto[], index: number) => void;
+  polls?: ConversationPoll[];
+  onRefreshPolls?: () => void;
+  onEditPoll?: (poll: ConversationPoll) => void;
 }
 
 const MessagesWrap = styled(Box, {
@@ -132,6 +136,9 @@ export default function MessageList({
   onForwardMessage,
   onEditMessage,
   onImageClick,
+  polls,
+  onRefreshPolls,
+  onEditPoll,
 }: MessageListProps) {
   const t = useTrans();
   const paginationByConversation = useChatStore((s) => s.paginationByConversation);
@@ -332,6 +339,10 @@ export default function MessageList({
                   onImageClick={(url, mediaList, index) => onImageClick?.(url, (mediaList || msg.attachments) as AttachmentDto[], index || 0)}
                   onDelete={() => onDeleteMessage(conversationId, msg.messageId)}
                   onDeleteForMe={() => deleteMessageForMe(conversationId, msg.messageId)}
+                  conversationId={conversationId}
+                  polls={polls}
+                  onRefreshPolls={onRefreshPolls}
+                  onEditPoll={onEditPoll}
                 />
 
                 {isLastMessage && mine && otherMembers.length > 0 && (

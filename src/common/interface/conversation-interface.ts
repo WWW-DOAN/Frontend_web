@@ -36,10 +36,18 @@ export interface PollOption {
   createdAt: string;
 }
 
+export interface PollVoterInfo {
+  userId: string;
+  displayName: string;
+  avatarUrl?: string | null;
+}
+
 export interface ConversationPoll {
   id: string;
   conversationId: string;
   createdBy: string;
+  createdByName?: string;
+  createdByAvatar?: string | null;
   question: string;
   options: PollOption[];
   allowMultiple: boolean;
@@ -52,13 +60,15 @@ export interface ConversationPoll {
   createdAt: string;
   updatedAt: string;
   totalVotes?: number;
+  totalVoters?: number;
+  votersByOption?: Record<string, PollVoterInfo[]>;
   userVote?: {
     id: string;
     pollId: string;
     userId: string;
     optionIds: string[];
     votedAt: string;
-  };
+  } | null;
 }
 
 export interface CallParticipant {

@@ -194,17 +194,39 @@ export default function InfConvColumn({
   }, [messages]);
 
   useEffect(() => {
-    if (isGroup && conversationId) {
+    if (!isGroup || !conversationId) {
+      setPollsCount(0);
+      return;
+    }
+    let cancelled = false;
+    const loadPollsCount = () => {
       chatService
         .getPolls(conversationId)
         .then((res: any) => {
-          const list = res?.payload?.data || res?.data || res || [];
-          if (Array.isArray(list)) {
+          const list =
+            res?.payload?.data ??
+            (Array.isArray(res?.payload) ? res.payload : undefined) ??
+            res?.data?.data ??
+            res?.data ??
+            [];
+          if (!cancelled && Array.isArray(list)) {
             setPollsCount(list.length);
           }
         })
         .catch(() => {});
-    }
+    };
+    loadPollsCount();
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (!detail?.conversationId || detail.conversationId === conversationId) {
+        loadPollsCount();
+      }
+    };
+    window.addEventListener("chat:poll-updated", handler);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("chat:poll-updated", handler);
+    };
   }, [conversationId, isGroup]);
 
   const handleOpenPoll = () => {
