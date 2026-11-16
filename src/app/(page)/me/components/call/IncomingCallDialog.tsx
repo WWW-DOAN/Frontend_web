@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Box, Typography, keyframes } from "@mui/material";
 import { styled, alpha } from "@mui/material/styles";
 import PhoneIcon from "@mui/icons-material/Phone";
 import CallEndIcon from "@mui/icons-material/CallEnd";
 import GroupsIcon from "@mui/icons-material/Groups";
+import VideocamIcon from "@mui/icons-material/Videocam";
 import { CircularProgress } from "@mui/material";
 import { answerCall, rejectCall, handleIncomingGroupCall, endCall } from "@/src/common/action/call.action";
 import { useCallStore } from "@/src/common/store/useCallStore";
@@ -176,27 +177,69 @@ export default function IncomingCallDialog() {
   const t = useTrans();
   const [visible, setVisible] = useState(false);
   const [data, setData] = useState<any>(null);
+  const dataRef = useRef<any>(null);
   const [callerName, setCallerName] = useState("");
   const [callerAvatar, setCallerAvatar] = useState<string | null>(null);
   const isAnswering = useCallStore((s) => s.isAnswering);
   const isRejecting = useCallStore((s) => s.isRejecting);
 
   useEffect(() => {
-    const handler = (e: Event) => {
+    dataRef.current = data;
+  }, [data]);
+
+  useEffect(() => {
+    const incomingHandler = (e: Event) => {
       const detail = (e as CustomEvent).detail;
       const store = useCallStore.getState();
       if (store.status !== "idle") return;
       setData(detail);
+      dataRef.current = detail;
       setCallerName(detail.caller_name || "");
       setCallerAvatar(detail.caller_avatar_url || null);
       setVisible(true);
       playRingtone();
     };
-    window.addEventListener("call:incoming", handler);
-    return () => window.removeEventListener("call:incoming", handler);
+
+    const hangupHandler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      const current = dataRef.current;
+      if (!current) return;
+      const sameCall =
+        (detail?.call_id && detail.call_id === (current.call_id || current.session_id)) ||
+        (detail?.conversation_id && detail.conversation_id === current.conversation_id) ||
+        (!detail?.call_id && !detail?.conversation_id);
+      if (sameCall) {
+        stopRingtone();
+        setVisible(false);
+        setData(null);
+        dataRef.current = null;
+      }
+    };
+
+    window.addEventListener("call:incoming", incomingHandler);
+    window.addEventListener("call:hangup", hangupHandler);
+    return () => {
+      window.removeEventListener("call:incoming", incomingHandler);
+      window.removeEventListener("call:hangup", hangupHandler);
+    };
   }, []);
 
+  useEffect(() => {
+    if (!visible) return;
+    const timeout = setTimeout(() => {
+      stopRingtone();
+      setVisible(false);
+      setData(null);
+      dataRef.current = null;
+    }, 30000);
+    return () => clearTimeout(timeout);
+  }, [visible]);
+
   if (!visible || !data) return null;
+
+  const isGroup = data.type === "incoming_group_call";
+  const resolvedGroupType: "AUDIO" | "VIDEO" = data.call_type === "VIDEO" ? "VIDEO" : "AUDIO";
+  const isVideo = data.call_type === "VIDEO";
 
   const handleAccept = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -216,13 +259,14 @@ export default function IncomingCallDialog() {
       callerId: data.started_by,
       callerName,
       callerAvatarUrl: callerAvatar,
-      type: data.type === "incoming_group_call" ? "GROUP" : (data.call_type || "AUDIO"),
+      type: isGroup ? "GROUP" : (data.call_type || "AUDIO"),
+      groupCallType: isGroup ? resolvedGroupType : null,
       sfuRoomId: data.sfu_room_id,
       sessionId: data.session_id,
     });
 
-    if (data.type === "incoming_group_call") {
-      handleIncomingGroupCall(data.conversation_id, data.session_id, data.sfu_room_id);
+    if (isGroup) {
+      handleIncomingGroupCall(data.conversation_id, data.session_id, data.sfu_room_id, resolvedGroupType);
     } else {
       answerCall(data.conversation_id, data.call_id);
     }
@@ -232,14 +276,15 @@ export default function IncomingCallDialog() {
     e.stopPropagation();
     stopRingtone();
     setVisible(false);
-    if (data.type === "incoming_group_call") {
+    const currentData = data;
+    setData(null);
+    dataRef.current = null;
+    if (isGroup) {
+      window.dispatchEvent(new CustomEvent("group-call:updated", { detail: currentData }));
     } else {
-      rejectCall(data.conversation_id, data.call_id);
+      rejectCall(currentData.conversation_id, currentData.call_id);
     }
   };
-
-  const isGroup = data.type === "incoming_group_call";
-  const isVideo = data.call_type === "VIDEO";
 
   return (
     <Overlay onClick={handleReject}>
@@ -274,7 +319,13 @@ export default function IncomingCallDialog() {
               mt: 0.5,
             }}
           >
-            {isGroup ? "Cuộc gọi nhóm" : isVideo ? "Cuộc gọi video" : "Cuộc gọi thoại"}
+            {isGroup
+              ? isVideo
+                ? "Cuộc gọi video nhóm"
+                : "Cuộc gọi thoại nhóm"
+              : isVideo
+              ? "Cuộc gọi video"
+              : "Cuộc gọi thoại"}
           </Typography>
           {!isGroup && (
             <WaveContainer>
@@ -288,7 +339,7 @@ export default function IncomingCallDialog() {
         </CallerInfo>
 
         <Actions>
-          <ActionBtn bgcolor="#fff" color="#EF4444" onClick={handleReject}>
+          <ActionBtn role="button" aria-label="Từ chối cuộc gọi" bgcolor="#fff" color="#EF4444" onClick={handleReject}>
             {isRejecting ? (
               <CircularProgress size={28} sx={{ color: "#EF4444" }} />
             ) : (
@@ -296,9 +347,11 @@ export default function IncomingCallDialog() {
             )}
           </ActionBtn>
 
-          <ActionBtn bgcolor="#22C55E" color="#fff" onClick={handleAccept}>
+          <ActionBtn role="button" aria-label="Chấp nhận cuộc gọi" bgcolor="#22C55E" color="#fff" onClick={handleAccept}>
             {isAnswering ? (
               <CircularProgress size={28} sx={{ color: "#fff" }} />
+            ) : isVideo ? (
+              <VideocamIcon sx={{ fontSize: 28 }} />
             ) : isGroup ? (
               <GroupsIcon sx={{ fontSize: 28 }} />
             ) : (

@@ -216,15 +216,14 @@ export default function CallDialogGroup() {
   const t = useTrans();
   const {
     status, localStream, minimized,
-    conversationId, sessionId,
+    conversationId, sessionId, groupCallType,
     peerStreams, callStartTime, isEnding,
+    audioMuted, videoMuted, isSpeaking,
   } = useCallStore();
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const peerAudioRefs = useRef<Map<string, HTMLAudioElement>>(new Map());
   const peerVideoRefs = useRef<Map<string, HTMLVideoElement>>(new Map());
-  const [audioMuted, setAudioMuted] = useState(false);
-  const [videoMuted, setVideoMuted] = useState(false);
   const [speakerOn, setSpeakerOn] = useState(false);
   const [elapsed, setElapsed] = useState("");
   const [controlsVisible, setControlsVisible] = useState(true);
@@ -285,24 +284,32 @@ export default function CallDialogGroup() {
   }, []);
 
   useEffect(() => {
-    if (localVideoRef.current && localStream)
-      localVideoRef.current.srcObject = localStream;
-  }, [localStream]);
+    if (localVideoRef.current && localStream && !videoMuted && localStream.getVideoTracks().length > 0) {
+      if (localVideoRef.current.srcObject !== localStream) {
+        localVideoRef.current.srcObject = localStream;
+      }
+      localVideoRef.current.play().catch(() => {});
+    }
+  }, [localStream, minimized, status, videoMuted, groupCallType]);
 
   useEffect(() => {
     peerStreams.forEach((peer) => {
       const videoEl = peerVideoRefs.current.get(peer.peerId);
-      if (videoEl) {
-        const stream = peer.video || peer.audio;
-        if (stream) videoEl.srcObject = stream;
+      if (videoEl && peer.video && !peer.videoMuted && peer.video.getVideoTracks().length > 0) {
+        if (videoEl.srcObject !== peer.video) {
+          videoEl.srcObject = peer.video;
+        }
+        videoEl.play().catch(() => {});
       }
       const audioEl = peerAudioRefs.current.get(peer.peerId);
       if (audioEl && peer.audio) {
-        audioEl.srcObject = peer.audio;
-        audioEl.play().catch(console.warn);
+        if (audioEl.srcObject !== peer.audio) {
+          audioEl.srcObject = peer.audio;
+        }
+        audioEl.play().catch(() => {});
       }
     });
-  }, [peerStreams]);
+  }, [peerStreams, minimized, status]);
 
   useEffect(() => {
     peerStreams.forEach((peer) => {
@@ -311,7 +318,12 @@ export default function CallDialogGroup() {
         if (res?.ok) {
           const user = (res.payload as any)?.data ?? res.payload;
           if (user?.avatarUrl) {
-            useCallStore.getState().updatePeerStream(peer.peerId, { avatarUrl: user.avatarUrl });
+            useCallStore.getState().updatePeerStream(peer.peerId, {
+              avatarUrl: user.avatarUrl,
+              displayName: peer.displayName === "Thành viên" || peer.displayName === peer.peerId
+                ? (user.displayName || user.fullName || user.username || peer.displayName)
+                : peer.displayName,
+            });
           }
         }
       }).catch(() => {});
@@ -324,15 +336,11 @@ export default function CallDialogGroup() {
   }, [conversationId, sessionId]);
 
   const handleToggleAudio = useCallback(() => {
-    const nextState = !audioMuted;
-    setAudioMuted(nextState);
-    toggleGroupAudio(!nextState);
+    toggleGroupAudio(audioMuted);
   }, [audioMuted]);
 
   const handleToggleVideo = useCallback(() => {
-    const nextState = !videoMuted;
-    setVideoMuted(nextState);
-    toggleGroupVideo(!nextState);
+    void toggleGroupVideo(videoMuted);
   }, [videoMuted]);
 
   const handleToggleSpeaker = useCallback(async () => {
@@ -354,7 +362,7 @@ export default function CallDialogGroup() {
   }, [speakerOn]);
 
   const handleSwitchCamera = useCallback(async () => {
-    if (!localStream) return;
+    if (!localStream || videoMuted) return;
     const newFacing = cameraFacingMode === "user" ? "environment" : "user";
     try {
       const newStream = await navigator.mediaDevices.getUserMedia({
@@ -364,26 +372,27 @@ export default function CallDialogGroup() {
       const newTrack = newStream.getVideoTracks()[0];
       const oldTracks = localStream.getVideoTracks();
       oldTracks.forEach((t) => { localStream.removeTrack(t); t.stop(); });
-      localStream.addTrack(newTrack);
-      useCallStore.getState().setLocalStream(localStream);
+      if (newTrack) {
+        await replaceGroupVideoTrack(newTrack);
+      }
       setCameraFacingMode(newFacing);
-      replaceGroupVideoTrack(newTrack);
     } catch (err) {
       console.warn("[SwitchCamera] failed:", err);
     }
-  }, [localStream, cameraFacingMode]);
+  }, [localStream, cameraFacingMode, videoMuted]);
 
   const handleMinimize = useCallback(() => {
     useCallStore.getState().setMinimized(true);
   }, []);
 
-  const { isSpeaking } = useCallStore();
+  const groupCallLabel = groupCallType === "VIDEO" ? "Cuộc gọi video nhóm" : t("CHAT.CALL_GROUP");
+  const hasLocalVideo = Boolean(localStream && !videoMuted && localStream.getVideoTracks().length > 0);
 
   if (minimized) {
     return (
       <MinimizedBar onClick={() => useCallStore.getState().setMinimized(false)}>
         <MiniAvatar><AppAvatar src={resolveMediaUrl(peerStreams[0]?.avatarUrl)} name={peerStreams[0]?.displayName || "Group"} size={32} /></MiniAvatar>
-        <Typography sx={{ fontSize: 13, fontWeight: 600 }}>{t("CHAT.CALL_GROUP")}</Typography>
+        <Typography sx={{ fontSize: 13, fontWeight: 600 }}>{groupCallLabel}</Typography>
         {elapsed && <Typography sx={{ fontSize: 11, color: "rgba(255,255,255,0.6)" }}>{elapsed}</Typography>}
       </MinimizedBar>
     );
@@ -391,13 +400,118 @@ export default function CallDialogGroup() {
 
   const totalParticipants = peerStreams.length + 1;
 
+  const renderGroupGrid = () => (
+    <GroupGrid>
+      {peerStreams.map((peer: SfuPeerStream) => {
+        const showPeerVideo = Boolean(peer.video && !peer.videoMuted && peer.video.getVideoTracks().length > 0);
+        return (
+          <PeerTile key={peer.peerId} $count={totalParticipants}>
+            {showPeerVideo ? (
+              <PeerVideo
+                ref={(el) => {
+                  if (el) {
+                    peerVideoRefs.current.set(peer.peerId, el);
+                    if (peer.video && el.srcObject !== peer.video) {
+                      el.srcObject = peer.video;
+                    }
+                    el.play().catch(() => {});
+                  }
+                }}
+                autoPlay
+                playsInline
+                muted
+              />
+            ) : (
+              <PeerAvatarWrap>
+                <AppAvatar
+                  src={resolveMediaUrl(peer.avatarUrl)}
+                  name={peer.displayName}
+                  size={64}
+                  sx={{ width: { xs: 48, md: 64 }, height: { xs: 48, md: 64 }, fontSize: { xs: 22, md: 28 }, boxShadow: "0 4px 12px rgba(0,90,224,0.3)" }}
+                />
+              </PeerAvatarWrap>
+            )}
+            <audio
+              ref={(el) => { if (el) peerAudioRefs.current.set(peer.peerId, el); }}
+              autoPlay playsInline
+            />
+            <PeerNamelabel>
+              {peer.displayName}
+              {peer.audioMuted && <MicOffIcon sx={{ fontSize: 11, opacity: 0.7 }} />}
+              {peer.videoMuted && groupCallType === "VIDEO" && <VideocamOffIcon sx={{ fontSize: 11, opacity: 0.7 }} />}
+            </PeerNamelabel>
+          </PeerTile>
+        );
+      })}
+      <PeerTile
+        $count={totalParticipants}
+        sx={{
+          border: isSpeaking ? "2px solid #005AE0" : "2px solid rgba(255,255,255,0.1)",
+          animation: isSpeaking ? `${speakingGlow} 1.5s ease-in-out infinite` : "none",
+        }}
+      >
+        {hasLocalVideo ? (
+          <LocalVideo
+            ref={(el) => {
+              (localVideoRef as any).current = el;
+              if (el && localStream && el.srcObject !== localStream) {
+                el.srcObject = localStream;
+                el.play().catch(() => {});
+              }
+            }}
+            autoPlay
+            playsInline
+            muted
+          />
+        ) : (
+          <PeerAvatarWrap>
+            <AppAvatar
+              name={t("CHAT.YOU")}
+              size={64}
+              sx={{ width: { xs: 48, md: 64 }, height: { xs: 48, md: 64 }, fontSize: { xs: 22, md: 28 }, boxShadow: "0 4px 12px rgba(0,90,224,0.3)" }}
+            />
+          </PeerAvatarWrap>
+        )}
+        <PeerNamelabel>
+          {t("CHAT.YOU")}
+          {audioMuted && <MicOffIcon sx={{ fontSize: 11, opacity: 0.7 }} />}
+        </PeerNamelabel>
+      </PeerTile>
+    </GroupGrid>
+  );
+
+  const renderGroupControls = () => (
+    <Controls sx={{ opacity: controlsVisible ? 1 : 0, transition: "opacity 0.3s", pointerEvents: controlsVisible ? "auto" : "none" }}>
+      <ControlBtn onClick={handleToggleAudio} aria-label="Bật/tắt micro">
+        {audioMuted ? <MicOffIcon /> : <MicIcon />}
+      </ControlBtn>
+      <ControlBtn onClick={handleToggleSpeaker} sx={speakerOn ? { backgroundColor: "#22C55E", "&:hover": { backgroundColor: "#16A34A" } } : {}}>
+        {speakerOn ? <VolumeUpIcon /> : <VolumeDownIcon />}
+      </ControlBtn>
+      <EndCallBtn onClick={handleEndCall} disabled={isEnding}>
+        {isEnding ? <CircularProgress size={26} sx={{ color: "#fff" }} /> : <CallEndIcon />}
+      </EndCallBtn>
+      <ControlBtn onClick={handleToggleVideo} aria-label="Bật/tắt camera">
+        {videoMuted ? <VideocamOffIcon /> : <VideocamIcon />}
+      </ControlBtn>
+      {hasLocalVideo && (
+        <ControlBtn onClick={handleSwitchCamera} aria-label="Đổi camera">
+          <FlipCameraIosIcon />
+        </ControlBtn>
+      )}
+      <ControlBtn onClick={handleMinimize} aria-label="Thu nhỏ">
+        <MinimizeIcon />
+      </ControlBtn>
+    </Controls>
+  );
+
   if (status === "ringing" || status === "connecting") {
     return (
       <Overlay>
         <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flex: 1, gap: 3 }}>
-          <AppAvatar name={t("CHAT.CALL_GROUP")} isGroup size={96} sx={{ width: { xs: 72, md: 96 }, height: { xs: 72, md: 96 }, fontSize: { xs: 30, md: 40 }, boxShadow: "0 8px 32px rgba(0,0,0,0.2)" }} />
+          <AppAvatar name={groupCallLabel} isGroup size={96} sx={{ width: { xs: 72, md: 96 }, height: { xs: 72, md: 96 }, fontSize: { xs: 30, md: 40 }, boxShadow: "0 8px 32px rgba(0,0,0,0.2)" }} />
           <Typography sx={{ color: "#fff", fontSize: { xs: 20, md: 26 }, fontWeight: 600, textShadow: "0 2px 4px rgba(0,0,0,0.1)" }}>
-            {t("CHAT.CALL_GROUP")}
+            {groupCallLabel}
           </Typography>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
             <CircularProgress size={14} sx={{ color: "rgba(255,255,255,0.7)" }} />
@@ -418,61 +532,12 @@ export default function CallDialogGroup() {
   if (status === "reconnecting") {
     return (
       <Overlay>
-        <GroupGrid>
-          {peerStreams.map((peer) => (
-            <PeerTile key={peer.peerId} $count={totalParticipants}>
-              {peer.video ? (
-                <PeerVideo
-                  ref={(el) => { if (el) peerVideoRefs.current.set(peer.peerId, el); }}
-                  autoPlay playsInline
-                />
-              ) : (
-                <PeerAvatarWrap>
-                  <AppAvatar src={resolveMediaUrl(peer.avatarUrl)} name={peer.displayName} size={64} sx={{ width: { xs: 48, md: 64 }, height: { xs: 48, md: 64 }, fontSize: { xs: 22, md: 28 }, boxShadow: "0 4px 12px rgba(0,90,224,0.3)" }} />
-                </PeerAvatarWrap>
-              )}
-              <audio
-                ref={(el) => { if (el) peerAudioRefs.current.set(peer.peerId, el); }}
-                autoPlay playsInline
-              />
-              <PeerNamelabel>
-                {peer.displayName}
-                {peer.audioMuted && <MicOffIcon sx={{ fontSize: 11, opacity: 0.7 }} />}
-              </PeerNamelabel>
-            </PeerTile>
-          ))}
-          <PeerTile $count={totalParticipants} sx={{ border: "2px solid rgba(255,255,255,0.1)" }}>
-            <LocalVideo
-              ref={localVideoRef}
-              autoPlay playsInline muted
-            />
-            <PeerNamelabel>{t("CHAT.YOU")}</PeerNamelabel>
-          </PeerTile>
-        </GroupGrid>
+        {renderGroupGrid()}
         <Box sx={{ position: "absolute", top: 16, left: "50%", transform: "translateX(-50%)", zIndex: 10, display: "flex", alignItems: "center", gap: 1, backgroundColor: "rgba(255,160,0,0.2)", padding: "8px 16px", borderRadius: 20 }}>
           <CircularProgress size={12} sx={{ color: "#FFA000" }} />
           <Typography sx={{ color: "#FFA000", fontSize: 13, fontWeight: 600 }}>{t("CHAT.RECONNECTING")}</Typography>
         </Box>
-        <Controls sx={{ opacity: controlsVisible ? 1 : 0, transition: "opacity 0.3s", pointerEvents: controlsVisible ? "auto" : "none" }}>
-          <ControlBtn onClick={handleToggleAudio}>
-            {audioMuted ? <MicOffIcon /> : <MicIcon />}
-          </ControlBtn>
-          <ControlBtn onClick={handleToggleSpeaker} sx={speakerOn ? { backgroundColor: "#22C55E", "&:hover": { backgroundColor: "#16A34A" } } : {}}>
-            {speakerOn ? <VolumeUpIcon /> : <VolumeDownIcon />}
-          </ControlBtn>
-          <EndCallBtn onClick={handleEndCall} disabled={isEnding}>
-            {isEnding ? <CircularProgress size={26} sx={{ color: "#fff" }} /> : <CallEndIcon />}
-          </EndCallBtn>
-          <ControlBtn onClick={handleToggleVideo}>
-            {videoMuted ? <VideocamOffIcon /> : <VideocamIcon />}
-          </ControlBtn>
-          <ControlBtn onClick={handleSwitchCamera}>
-            <FlipCameraIosIcon />
-          </ControlBtn>
-          <ControlBtn onClick={handleMinimize}>
-            <MinimizeIcon />
-          </ControlBtn>
-        </Controls>
+        {renderGroupControls()}
       </Overlay>
     );
   }
@@ -483,63 +548,14 @@ export default function CallDialogGroup() {
     <Overlay onClick={showControls} onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
       <TopInfo sx={{ opacity: controlsVisible ? 1 : 0, transition: "opacity 0.3s" }}>
         <Typography sx={{ color: "rgba(255,255,255,0.7)", fontSize: 14, fontWeight: 600 }}>
-          {totalParticipants} participants
+          {totalParticipants} người tham gia
         </Typography>
         {elapsed && (
           <Typography sx={{ color: "rgba(255,255,255,0.5)", fontSize: 13 }}>· {elapsed}</Typography>
         )}
       </TopInfo>
-      <GroupGrid>
-        {peerStreams.map((peer) => (
-          <PeerTile key={peer.peerId} $count={totalParticipants}>
-            {peer.video ? (
-              <PeerVideo
-                ref={(el) => { if (el) peerVideoRefs.current.set(peer.peerId, el); }}
-                autoPlay playsInline
-              />
-            ) : (
-              <PeerAvatarWrap>
-                <AppAvatar src={resolveMediaUrl(peer.avatarUrl)} name={peer.displayName} size={64} sx={{ width: { xs: 48, md: 64 }, height: { xs: 48, md: 64 }, fontSize: { xs: 22, md: 28 }, boxShadow: "0 4px 12px rgba(0,90,224,0.3)" }} />
-              </PeerAvatarWrap>
-            )}
-            <audio
-              ref={(el) => { if (el) peerAudioRefs.current.set(peer.peerId, el); }}
-              autoPlay playsInline
-            />
-            <PeerNamelabel>
-              {peer.displayName}
-              {peer.audioMuted && <MicOffIcon sx={{ fontSize: 11, opacity: 0.7 }} />}
-            </PeerNamelabel>
-          </PeerTile>
-        ))}
-        <PeerTile $count={totalParticipants} sx={{ border: isSpeaking ? "2px solid #005AE0" : "2px solid rgba(255,255,255,0.1)", animation: isSpeaking ? `${speakingGlow} 1.5s ease-in-out infinite` : "none" }}>
-          <LocalVideo
-            ref={localVideoRef}
-            autoPlay playsInline muted
-          />
-          <PeerNamelabel>{t("CHAT.YOU")}</PeerNamelabel>
-        </PeerTile>
-      </GroupGrid>
-      <Controls sx={{ opacity: controlsVisible ? 1 : 0, transition: "opacity 0.3s", pointerEvents: controlsVisible ? "auto" : "none" }}>
-        <ControlBtn onClick={handleToggleAudio}>
-          {audioMuted ? <MicOffIcon /> : <MicIcon />}
-        </ControlBtn>
-        <ControlBtn onClick={handleToggleSpeaker} sx={speakerOn ? { backgroundColor: "#22C55E", "&:hover": { backgroundColor: "#16A34A" } } : {}}>
-          {speakerOn ? <VolumeUpIcon /> : <VolumeDownIcon />}
-        </ControlBtn>
-        <EndCallBtn onClick={handleEndCall} disabled={isEnding}>
-          {isEnding ? <CircularProgress size={26} sx={{ color: "#fff" }} /> : <CallEndIcon />}
-        </EndCallBtn>
-        <ControlBtn onClick={handleToggleVideo}>
-          {videoMuted ? <VideocamOffIcon /> : <VideocamIcon />}
-        </ControlBtn>
-        <ControlBtn onClick={handleSwitchCamera}>
-          <FlipCameraIosIcon />
-        </ControlBtn>
-        <ControlBtn onClick={handleMinimize}>
-          <MinimizeIcon />
-        </ControlBtn>
-      </Controls>
+      {renderGroupGrid()}
+      {renderGroupControls()}
     </Overlay>
   );
 }

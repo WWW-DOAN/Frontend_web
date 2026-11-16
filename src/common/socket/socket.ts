@@ -9,6 +9,32 @@ let currentUserId: string | null = null;
 const conversationSubscriptions = new Map<string, Map<string, any>>();
 const pendingConversationSubscriptions = new Set<string>();
 
+const dispatchCallSignalMessage = (rawBody: string) => {
+  try {
+    const callData = JSON.parse(rawBody);
+    if (callData.type === "incoming_call" || callData.type === "incoming_group_call") {
+      if (callData.type === "incoming_group_call") {
+        window.dispatchEvent(new CustomEvent("group-call:updated", { detail: callData }));
+      }
+      window.dispatchEvent(new CustomEvent("call:incoming", { detail: callData }));
+    } else if (callData.type === "hangup") {
+      window.dispatchEvent(new CustomEvent("call:hangup", { detail: callData }));
+      handleCallSignal(callData);
+    } else if (
+      callData.type === "sfu-peer-joined" ||
+      callData.type === "sfu-peer-left" ||
+      callData.type === "sfu-active-speaker" ||
+      callData.type === "sfu-transport-state"
+    ) {
+      window.dispatchEvent(new CustomEvent("sfu:signal", { detail: callData }));
+    } else {
+      handleCallSignal(callData);
+    }
+  } catch (err) {
+    console.error("Failed to parse call event:", err);
+  }
+};
+
 const dispatchChatEvent = (eventName: string, body: string) => {
   try {
     const data = JSON.parse(body);
@@ -121,38 +147,30 @@ export const connectSocket = (accessToken?: string, userId?: string) => {
             try {
               const data = JSON.parse(message.body);
               console.log('[STOMP incoming call]', data);
+              if (
+                data.type === "call_ended" ||
+                data.type === "call_rejected" ||
+                data.type === "call_cancelled"
+              ) {
+                window.dispatchEvent(new CustomEvent("call:hangup", { detail: data }));
+                handleCallSignal({
+                  type: "hangup",
+                  sender_id: data.started_by,
+                  conversation_id: data.conversation_id,
+                });
+                return;
+              }
               const convId = data.conversation_id;
               if (convId) {
-                let subs = conversationSubscriptions.get(convId);
-                if (!subs) {
-                  subs = new Map();
-                  conversationSubscriptions.set(convId, subs);
+                subscribeIfMissing(convId, "call", `/topic/conv.${convId}/call`, (msg: IMessage) => {
+                  dispatchCallSignalMessage(msg.body);
+                });
+                if (data.type === "incoming_call") {
+                  sendSocketMessage("/app/call.ready", { conversation_id: convId });
                 }
-                if (!subs.has("call")) {
-                  const callSub = stompClient!.subscribe(
-                    `/topic/conv.${convId}/call`,
-                    (msg: IMessage) => {
-                      try {
-                        const callData = JSON.parse(msg.body);
-                        if (callData.type === "incoming_call" || callData.type === "incoming_group_call") {
-                          const event = new CustomEvent("call:incoming", { detail: callData });
-                          window.dispatchEvent(event);
-                        } else if (
-                          callData.type === "sfu-peer-joined" ||
-                          callData.type === "sfu-peer-left" ||
-                          callData.type === "sfu-active-speaker" ||
-                          callData.type === "sfu-transport-state"
-                        ) {
-                          const event = new CustomEvent("sfu:signal", { detail: callData });
-                          window.dispatchEvent(event);
-                        } else {
-                          handleCallSignal(callData);
-                        }
-                      } catch {}
-                    },
-                  );
-                  subs.set("call", callSub);
-                }
+              }
+              if (data.type === "incoming_group_call") {
+                window.dispatchEvent(new CustomEvent("group-call:updated", { detail: data }));
               }
               const event = new CustomEvent("call:incoming", { detail: data });
               window.dispatchEvent(event);
@@ -315,25 +333,7 @@ export const subscribeToConversation = (conversationId: string) => {
   });
 
   subscribeIfMissing(conversationId, "call", `/topic/conv.${conversationId}/call`, (message) => {
-    try {
-      const data = JSON.parse(message.body);
-      if (data.type === "incoming_call" || data.type === "incoming_group_call") {
-        const event = new CustomEvent("call:incoming", { detail: data });
-        window.dispatchEvent(event);
-      } else if (
-        data.type === "sfu-peer-joined" ||
-        data.type === "sfu-peer-left" ||
-        data.type === "sfu-active-speaker" ||
-        data.type === "sfu-transport-state"
-      ) {
-        const event = new CustomEvent("sfu:signal", { detail: data });
-        window.dispatchEvent(event);
-      } else {
-        handleCallSignal(data);
-      }
-    } catch (err) {
-      console.error("Failed to parse call event:", err);
-    }
+    dispatchCallSignalMessage(message.body);
   });
 };
 

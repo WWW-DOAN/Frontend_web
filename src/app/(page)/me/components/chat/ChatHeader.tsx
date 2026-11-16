@@ -243,8 +243,8 @@ export default function ChatHeader({
                 <AutoAwesomeIcon fontSize="small" />
               </ActionBtn>
             </Tooltip>
-            <ActionBtn aria-label={t("CHAT.CALL_GROUP")} onClick={() => conversationId && startGroupCall(conversationId)}><PhoneIcon fontSize="small" /></ActionBtn>
-            <ActionBtn aria-label="Gọi video nhóm" onClick={() => conversationId && startGroupCall(conversationId)}><VideoCallIcon fontSize="small" /></ActionBtn>
+            <ActionBtn aria-label={t("CHAT.CALL_GROUP")} onClick={() => conversationId && startGroupCall(conversationId, "AUDIO")}><PhoneIcon fontSize="small" /></ActionBtn>
+            <ActionBtn aria-label="Gọi video nhóm" onClick={() => conversationId && startGroupCall(conversationId, "VIDEO")}><VideoCallIcon fontSize="small" /></ActionBtn>
           </>
         )}
         <ActionBtn aria-label={t("CHAT.SEARCH")} onClick={onToggleSearch}><SearchIcon fontSize="small" /></ActionBtn>

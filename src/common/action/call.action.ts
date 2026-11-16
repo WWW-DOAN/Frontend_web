@@ -13,6 +13,8 @@ export {
   endCall,
   handleCallSignal,
   enableVideo,
+  replaceVideoTrack1vs1,
+  notifyMediaState1vs1,
   toggleScreenShare,
 } from './call-1-1.action';
 

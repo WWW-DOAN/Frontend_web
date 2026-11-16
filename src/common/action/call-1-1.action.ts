@@ -10,7 +10,12 @@ let iceServers: IceServer[] = [];
 let currentUserId: string | null = null;
 let pendingOffer: { sdp: RTCSessionDescriptionInit; senderId: string } | null = null;
 let pendingIceCandidates: RTCIceCandidateInit[] = [];
+let localIceCandidatesBuffer: RTCIceCandidateInit[] = [];
 let ringingTimeoutId: ReturnType<typeof setTimeout> | null = null;
+
+function getActiveUserId(): string | null {
+  return currentUserId || getcurrentUserId();
+}
 
 export function initCallUser() {
   currentUserId = getcurrentUserId();
@@ -72,24 +77,71 @@ export async function enableVideo(): Promise<void> {
     const videoTrack = videoStream.getVideoTracks()[0];
     if (!videoTrack) return;
 
+    const audioTracks = localStream ? localStream.getAudioTracks() : [];
+    const updatedStream = new MediaStream([...audioTracks, videoTrack]);
+    localStream = updatedStream;
+
     const pc = peerConnection;
+    const store = useCallStore.getState();
+
     if (pc) {
-      const videoSender = pc.getSenders().find((s) => s.track?.kind === "video");
+      const videoSender = pc.getSenders().find((s) => s.track?.kind === "video" || (!s.track && s.dtmf === null));
       if (videoSender) {
-        void videoSender.replaceTrack(videoTrack);
+        await videoSender.replaceTrack(videoTrack);
       } else {
-        pc.addTrack(videoTrack, localStream || videoStream);
+        pc.addTrack(videoTrack, updatedStream);
       }
     }
 
-    if (localStream) {
-      localStream.addTrack(videoTrack);
+    store.setLocalStream(updatedStream);
+    store.setType("VIDEO");
+    store.setVideoMuted(false);
+
+    if (pc && store.conversationId) {
+      try {
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        sendSocketMessage("/app/call.offer", {
+          conversation_id: store.conversationId,
+          sdp: pc.localDescription,
+          renegotiate: true,
+        });
+        sendSocketMessage("/app/call.media-state", {
+          conversation_id: store.conversationId,
+          audio_muted: store.audioMuted,
+          video_muted: false,
+        });
+      } catch (err) {
+        console.warn("[Call] enableVideo renegotiation failed:", err);
+      }
     }
-    const store = useCallStore.getState();
-    store.setLocalStream(localStream!);
   } catch (err) {
-    console.warn('[Call] enableVideo failed:', err);
+    console.warn("[Call] enableVideo failed:", err);
   }
+}
+
+export async function replaceVideoTrack1vs1(newTrack: MediaStreamTrack): Promise<void> {
+  const pc = peerConnection;
+  if (pc) {
+    const videoSender = pc.getSenders().find((s) => s.track?.kind === "video");
+    if (videoSender) {
+      await videoSender.replaceTrack(newTrack);
+    }
+  }
+  const audioTracks = localStream ? localStream.getAudioTracks() : [];
+  const updatedStream = new MediaStream([...audioTracks, newTrack]);
+  localStream = updatedStream;
+  useCallStore.getState().setLocalStream(updatedStream);
+}
+
+export function notifyMediaState1vs1(audioMuted: boolean, videoMuted: boolean): void {
+  const store = useCallStore.getState();
+  if (!store.conversationId) return;
+  sendSocketMessage("/app/call.media-state", {
+    conversation_id: store.conversationId,
+    audio_muted: audioMuted,
+    video_muted: videoMuted,
+  });
 }
 
 let originalCameraTrack: MediaStreamTrack | null = null;
@@ -170,6 +222,7 @@ export function cleanupLocalStream() {
 }
 
 export function cleanupPeerConnection() {
+  localIceCandidatesBuffer = [];
   if (peerConnection) {
     peerConnection.close();
     peerConnection = null;
@@ -206,8 +259,9 @@ function setupIceStateHandler(pc: RTCPeerConnection) {
   pc.oniceconnectionstatechange = () => {
     const state = pc.iceConnectionState;
     const callStore = useCallStore.getState();
-    if (state === "connected") {
-      if (callStore.status === "connecting" || callStore.status === "reconnecting") {
+    if (state === "connected" || state === "completed") {
+      clearRingingTimeout();
+      if (callStore.status === "connecting" || callStore.status === "reconnecting" || callStore.status === "ringing") {
         callStore.setConnected(localStream!);
       }
     } else if (state === "disconnected") {
@@ -226,17 +280,20 @@ export async function startCall(conversationId: string, type: "AUDIO" | "VIDEO")
 
   useCallStore.getState().setStarting(true);
   try {
+    localIceCandidatesBuffer = [];
     const callResult = await callService.startCall(conversationId, type);
     useCallStore.getState().initiateCall({
       callId: callResult.id,
       conversationId,
       type,
     });
+    subscribeToConversation(conversationId);
     setupRingingTimeout(conversationId);
 
     await loadIceServers();
     useCallStore.getState().setConnecting();
     const stream = await getLocalStream(type === "VIDEO");
+    useCallStore.getState().setLocalStream(stream);
 
     peerConnection = new RTCPeerConnection(getRTCConfig());
     stream.getTracks().forEach((track) => peerConnection!.addTrack(track, stream));
@@ -244,21 +301,29 @@ export async function startCall(conversationId: string, type: "AUDIO" | "VIDEO")
 
     peerConnection.onicecandidate = (event) => {
       if (event.candidate) {
+        const candidateJson = event.candidate.toJSON();
+        localIceCandidatesBuffer.push(candidateJson);
         sendSocketMessage("/app/call.ice-candidate", {
           conversation_id: conversationId,
-          candidate: event.candidate.toJSON(),
+          candidate: candidateJson,
         });
       }
     };
 
     peerConnection.ontrack = (event) => {
-      useCallStore.getState().setRemoteStream(event.streams[0]);
+      const incomingStream = event.streams[0];
+      if (incomingStream) {
+        useCallStore.getState().setRemoteStream(new MediaStream(incomingStream.getTracks()));
+      } else if (event.track) {
+        const existing = useCallStore.getState().remoteStream;
+        const tracks = existing ? [...existing.getTracks().filter((t) => t.id !== event.track.id), event.track] : [event.track];
+        useCallStore.getState().setRemoteStream(new MediaStream(tracks));
+      }
     };
 
     const offer = await peerConnection.createOffer();
     await peerConnection.setLocalDescription(offer);
 
-    subscribeToConversation(conversationId);
     sendSocketMessage("/app/call.offer", {
       conversation_id: conversationId,
       sdp: peerConnection.localDescription,
@@ -276,6 +341,7 @@ export async function answerCall(conversationId: string, callId: string) {
 
   useCallStore.getState().setAnswering(true);
   try {
+    subscribeToConversation(conversationId);
     try {
       await callService.joinCall(conversationId, callId);
     } catch (err) {
@@ -285,6 +351,7 @@ export async function answerCall(conversationId: string, callId: string) {
 
     await loadIceServers();
     const stream = await getLocalStream(store.type === "VIDEO");
+    useCallStore.getState().setLocalStream(stream);
 
     peerConnection = new RTCPeerConnection(getRTCConfig());
     stream.getTracks().forEach((track) => peerConnection!.addTrack(track, stream));
@@ -300,39 +367,39 @@ export async function answerCall(conversationId: string, callId: string) {
     };
 
     peerConnection.ontrack = (event) => {
-      useCallStore.getState().setRemoteStream(event.streams[0]);
+      const incomingStream = event.streams[0];
+      if (incomingStream) {
+        useCallStore.getState().setRemoteStream(new MediaStream(incomingStream.getTracks()));
+      } else if (event.track) {
+        const existing = useCallStore.getState().remoteStream;
+        const tracks = existing ? [...existing.getTracks().filter((t) => t.id !== event.track.id), event.track] : [event.track];
+        useCallStore.getState().setRemoteStream(new MediaStream(tracks));
+      }
     };
 
-    subscribeToConversation(conversationId);
+    if (!pendingOffer) {
+      sendSocketMessage("/app/call.ready", { conversation_id: conversationId });
+    }
 
-    let answerParams: { sdp: RTCSessionDescriptionInit; candidates: RTCIceCandidateInit[] } | null = pendingOffer
+    const answerParams: { sdp: RTCSessionDescriptionInit; candidates: RTCIceCandidateInit[] } | null = pendingOffer
       ? { sdp: pendingOffer.sdp, candidates: pendingIceCandidates }
       : await new Promise<{ sdp: RTCSessionDescriptionInit; candidates: RTCIceCandidateInit[] } | null>((resolve) => {
+          let ticks = 0;
           const check = setInterval(() => {
+            ticks += 1;
             if (pendingOffer) {
               clearInterval(check);
               clearTimeout(timer);
               resolve({ sdp: pendingOffer.sdp, candidates: pendingIceCandidates });
+            } else if (ticks % 10 === 0) {
+              sendSocketMessage("/app/call.ready", { conversation_id: conversationId });
             }
-          }, 200);
+          }, 100);
           const timer = setTimeout(() => {
             clearInterval(check);
             resolve(null);
-          }, 6000);
+          }, 5000);
         });
-
-    if (!answerParams) {
-      console.warn('[Call] pendingOffer not found via WS, falling back to HTTP getCallState');
-      try {
-        const state: any = await callService.getCallState(conversationId);
-        if (state?.offerSdp) {
-          answerParams = { sdp: JSON.parse(state.offerSdp), candidates: pendingIceCandidates };
-          console.log('[Call] recovered offer via HTTP fallback');
-        }
-      } catch (err) {
-        console.warn('[Call] HTTP fallback getCallState failed:', err);
-      }
-    }
 
     if (answerParams) {
       const offer = new RTCSessionDescription(answerParams.sdp);
@@ -350,6 +417,8 @@ export async function answerCall(conversationId: string, callId: string) {
         sdp: peerConnection.localDescription,
       });
       pendingOffer = null;
+    } else {
+      throw new Error("Không nhận được tín hiệu kết nối từ người gọi");
     }
   } catch (err: any) {
     useCallStore.getState().setError(err.message || "Failed to answer call");
@@ -446,8 +515,9 @@ export async function endCall(conversationId?: string) {
 export function handleCallSignal(data: any) {
   const store = useCallStore.getState();
   const peer = peerConnection;
+  const myId = getActiveUserId();
 
-  if (data.sender_id === currentUserId) return;
+  if (myId && data.sender_id === myId) return;
 
   if (!store.active) {
     if (data.type === "offer") {
@@ -459,10 +529,40 @@ export function handleCallSignal(data: any) {
   }
 
   switch (data.type) {
+    case "ready": {
+      if (peer && peer.localDescription && peer.localDescription.type === "offer" && store.conversationId) {
+        sendSocketMessage("/app/call.offer", {
+          conversation_id: store.conversationId,
+          sdp: peer.localDescription,
+        });
+        for (const candidate of localIceCandidatesBuffer) {
+          sendSocketMessage("/app/call.ice-candidate", {
+            conversation_id: store.conversationId,
+            candidate,
+          });
+        }
+      }
+      break;
+    }
+    case "media-state": {
+      useCallStore.getState().setRemoteMediaState({
+        audioMuted: Boolean(data.audio_muted),
+        videoMuted: Boolean(data.video_muted),
+      });
+      break;
+    }
     case "offer": {
-      if (!peer) return;
+      if (!peer) {
+        pendingOffer = { sdp: data.sdp, senderId: data.sender_id };
+        return;
+      }
       if (peer.signalingState !== "stable") {
         return;
+      }
+      const sdpStr = typeof data.sdp?.sdp === "string" ? data.sdp.sdp : "";
+      if (sdpStr.includes("m=video") && useCallStore.getState().type === "AUDIO") {
+        useCallStore.getState().setType("VIDEO");
+        useCallStore.getState().setRemoteMediaState({ videoMuted: false });
       }
       const offer = new RTCSessionDescription(data.sdp);
       peer.setRemoteDescription(offer).then(async () => {

@@ -17,7 +17,7 @@ import ScreenShareIcon from "@mui/icons-material/ScreenShare";
 import StopScreenShareIcon from "@mui/icons-material/StopScreenShare";
 import { useCallStore } from "@/src/common/store/useCallStore";
 import { useChatStore } from "@/src/common/store/useChatStore";
-import { endCall, answerCall, rejectCall, enableVideo, toggleScreenShare } from "@/src/common/action/call.action";
+import { endCall, answerCall, rejectCall, enableVideo, replaceVideoTrack1vs1, notifyMediaState1vs1, toggleScreenShare } from "@/src/common/action/call.action";
 import { useTrans } from "@/src/common/utilities/hook/trans";
 import { userService } from "@/src/common/service/user-service";
 import { resolveMediaUrl } from "@/src/common/helpers/displayMedia.helpers";
@@ -257,13 +257,12 @@ export default function CallDialog1vs1() {
     status, type, localStream, remoteStream, minimized,
     conversationId, callId, callerName, callerAvatarUrl,
     callStartTime, isEnding, isRejecting, isScreenSharing,
+    audioMuted, videoMuted, remoteVideoMuted,
   } = useCallStore();
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const remoteAudioRef = useRef<HTMLAudioElement>(null);
-  const [audioMuted, setAudioMuted] = useState(false);
-  const [videoMuted, setVideoMuted] = useState(false);
   const [speakerOn, setSpeakerOn] = useState(false);
   const [elapsed, setElapsed] = useState("");
   const [controlsVisible, setControlsVisible] = useState(true);
@@ -360,42 +359,44 @@ export default function CallDialog1vs1() {
   useEffect(() => {
     if (localVideoRef.current && localStream)
       localVideoRef.current.srcObject = localStream;
-  }, [localStream]);
+  }, [localStream, minimized, status, type, videoMuted]);
 
   useEffect(() => {
     if (remoteVideoRef.current && remoteStream)
       remoteVideoRef.current.srcObject = remoteStream;
-  }, [remoteStream]);
+  }, [remoteStream, minimized, status, type, remoteVideoMuted]);
 
   useEffect(() => {
     if (remoteAudioRef.current && remoteStream) {
       remoteAudioRef.current.srcObject = remoteStream;
-      remoteAudioRef.current.play().catch(console.warn);
+      remoteAudioRef.current.play().catch(() => {});
     }
-  }, [remoteStream]);
+  }, [remoteStream, minimized, status, type]);
 
   const handleEndCall = useCallback(() => {
     endCall();
   }, []);
 
   const handleToggleAudio = useCallback(() => {
+    const nextMuted = !audioMuted;
     if (localStream) {
-      localStream.getAudioTracks().forEach((t) => (t.enabled = audioMuted));
-      setAudioMuted(!audioMuted);
+      localStream.getAudioTracks().forEach((t) => (t.enabled = !nextMuted));
     }
-  }, [localStream, audioMuted]);
+    useCallStore.getState().setAudioMuted(nextMuted);
+    notifyMediaState1vs1(nextMuted, videoMuted);
+  }, [localStream, audioMuted, videoMuted]);
 
-  const handleToggleVideo = useCallback(() => {
-    if (!localStream) return;
-    const tracks = localStream.getVideoTracks();
+  const handleToggleVideo = useCallback(async () => {
+    const tracks = localStream?.getVideoTracks() || [];
     if (tracks.length === 0) {
-      enableVideo();
-      setVideoMuted(false);
+      await enableVideo();
       return;
     }
-    tracks.forEach((t) => (t.enabled = videoMuted));
-    setVideoMuted(!videoMuted);
-  }, [localStream, videoMuted]);
+    const nextMuted = !videoMuted;
+    tracks.forEach((t) => (t.enabled = !nextMuted));
+    useCallStore.getState().setVideoMuted(nextMuted);
+    notifyMediaState1vs1(audioMuted, nextMuted);
+  }, [localStream, videoMuted, audioMuted]);
 
   const handleToggleSpeaker = useCallback(async () => {
     try {
@@ -426,8 +427,9 @@ export default function CallDialog1vs1() {
       const newTrack = newStream.getVideoTracks()[0];
       const oldTracks = localStream.getVideoTracks();
       oldTracks.forEach((t) => { localStream.removeTrack(t); t.stop(); });
-      localStream.addTrack(newTrack);
-      useCallStore.getState().setLocalStream(localStream);
+      if (newTrack) {
+        await replaceVideoTrack1vs1(newTrack);
+      }
       setCameraFacingMode(newFacing);
     } catch (err) {
       console.warn("[SwitchCamera] failed:", err);
@@ -463,7 +465,7 @@ export default function CallDialog1vs1() {
             {callerName || ""}
           </Typography>
           <Typography sx={{ color: "rgba(255,255,255,0.7)", fontSize: 14, mt: 0.5 }}>
-            {t("CHAT.CALL_AUDIO")}
+            {type === "VIDEO" ? t("CHAT.CALL_VIDEO") : t("CHAT.CALL_AUDIO")}
           </Typography>
         </TopInfo>
         <Controls>
@@ -544,6 +546,8 @@ export default function CallDialog1vs1() {
   }
 
   if (status === "connected" && type === "VIDEO") {
+    const hasRemoteVideo = !remoteVideoMuted && Boolean(remoteStream?.getVideoTracks().length);
+    const hasLocalVideo = !videoMuted && Boolean(localStream?.getVideoTracks().length);
     return (
       <VideoOverlay onClick={showControls} onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
         <TopInfo sx={{ top: { xs: 8, md: 16 }, flexDirection: "row", justifyContent: "center", gap: 1, opacity: controlsVisible ? 1 : 0, transition: "opacity 0.3s" }}>
@@ -553,13 +557,49 @@ export default function CallDialog1vs1() {
           <Typography sx={{ color: "rgba(255,255,255,0.6)", fontSize: { xs: 11, md: 14 } }}>· {elapsed}</Typography>
         </TopInfo>
         <VideoContainer>
-          <RemoteVideo ref={remoteVideoRef} autoPlay playsInline />
+          {hasRemoteVideo ? (
+            <RemoteVideo ref={remoteVideoRef} autoPlay playsInline />
+          ) : (
+            <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+              <AppAvatar src={resolveMediaUrl(callerAvatarUrl)} name={callerName} size={112} sx={{ width: 112, height: 112, fontSize: 44 }} />
+              <Typography sx={{ color: "rgba(255,255,255,0.75)", fontSize: 14 }}>
+                {remoteVideoMuted ? "Đối phương đang tắt camera" : "Đang chờ video..."}
+              </Typography>
+            </Box>
+          )}
           <audio ref={remoteAudioRef} autoPlay playsInline style={{ display: 'none' }} />
-          <LocalVideo ref={localVideoRef} autoPlay playsInline muted />
+          {hasLocalVideo ? (
+            <LocalVideo ref={localVideoRef} autoPlay playsInline muted />
+          ) : (
+            <Box
+              sx={{
+                position: "absolute",
+                top: { xs: 60, md: 80 },
+                right: { xs: 12, md: 20 },
+                width: { xs: 100, md: 140 },
+                height: { xs: 140, md: 200 },
+                borderRadius: { xs: "12px", md: "16px" },
+                bgcolor: "#1a1a2e",
+                border: "2px solid rgba(255,255,255,0.2)",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 1,
+                zIndex: 5,
+              }}
+            >
+              <VideocamOffIcon sx={{ color: "rgba(255,255,255,0.6)", fontSize: 28 }} />
+              <Typography sx={{ color: "rgba(255,255,255,0.6)", fontSize: 11 }}>Đã tắt cam</Typography>
+            </Box>
+          )}
         </VideoContainer>
         <Controls sx={{ opacity: controlsVisible ? 1 : 0, transition: "opacity 0.3s", pointerEvents: controlsVisible ? "auto" : "none" }}>
-          <ControlBtn onClick={handleToggleAudio}>
+          <ControlBtn onClick={handleToggleAudio} aria-label="Bật/tắt micro">
             {audioMuted ? <MicOffIcon /> : <MicIcon />}
+          </ControlBtn>
+          <ControlBtn onClick={handleToggleVideo} aria-label="Bật/tắt camera">
+            {videoMuted ? <VideocamOffIcon /> : <VideocamIcon />}
           </ControlBtn>
           <ControlBtn onClick={handleToggleSpeaker} sx={speakerOn ? { backgroundColor: "#22C55E", "&:hover": { backgroundColor: "#16A34A" } } : {}}>
             {speakerOn ? <VolumeUpIcon /> : <VolumeDownIcon />}
@@ -607,8 +647,11 @@ export default function CallDialog1vs1() {
       </TopInfo>
       <audio ref={remoteAudioRef} autoPlay playsInline style={{ display: 'none' }} />
       <Controls sx={{ opacity: controlsVisible ? 1 : 0, transition: "opacity 0.3s", pointerEvents: controlsVisible ? "auto" : "none" }}>
-        <ControlBtn onClick={handleToggleAudio}>
+        <ControlBtn onClick={handleToggleAudio} aria-label="Bật/tắt micro">
           {audioMuted ? <MicOffIcon /> : <MicIcon />}
+        </ControlBtn>
+        <ControlBtn onClick={handleToggleVideo} aria-label="Bật camera">
+          <VideocamIcon />
         </ControlBtn>
         <ControlBtn onClick={handleToggleSpeaker} sx={speakerOn ? { backgroundColor: "#22C55E", "&:hover": { backgroundColor: "#16A34A" } } : {}}>
           {speakerOn ? <VolumeUpIcon /> : <VolumeDownIcon />}

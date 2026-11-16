@@ -23,6 +23,7 @@ export interface GroupCallSessionData {
   sfuRoomId: string;
   startedBy: string;
   hostId: string;
+  type?: "AUDIO" | "VIDEO";
   status: string;
   startedAt: string;
 }
@@ -106,8 +107,8 @@ export const callService = {
     return res.payload;
   },
 
-  async createGroupCall(conversationId: string): Promise<GroupCallSessionResponse> {
-    const res = await http.post<GroupCallSessionResponse>(API.API_GROUP_CALLS_CREATE(conversationId), {});
+  async createGroupCall(conversationId: string, type: "AUDIO" | "VIDEO" = "AUDIO"): Promise<GroupCallSessionResponse> {
+    const res = await http.post<GroupCallSessionResponse>(API.API_GROUP_CALLS_CREATE(conversationId), { type });
     return res.payload;
   },
 

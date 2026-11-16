@@ -18,6 +18,7 @@ export interface CallState {
   callerName: string | null;
   callerAvatarUrl: string | null;
   type: "AUDIO" | "VIDEO" | "GROUP" | null;
+  groupCallType: "AUDIO" | "VIDEO" | null;
   status: "idle" | "ringing" | "connecting" | "connected" | "reconnecting" | "ended";
   localStream: MediaStream | null;
   remoteStream: MediaStream | null;
@@ -30,6 +31,8 @@ export interface CallState {
   isSpeaking: boolean;
   audioMuted: boolean;
   videoMuted: boolean;
+  remoteAudioMuted: boolean;
+  remoteVideoMuted: boolean;
   isScreenSharing: boolean;
   callStartTime: number | null;
   // Loading states
@@ -44,6 +47,7 @@ export interface CallSetters {
     callId: string;
     conversationId: string;
     type: "AUDIO" | "VIDEO" | "GROUP";
+    groupCallType?: "AUDIO" | "VIDEO" | null;
     callerName?: string;
     callerAvatarUrl?: string | null;
   }) => void;
@@ -54,9 +58,12 @@ export interface CallSetters {
     callerName: string;
     callerAvatarUrl?: string | null;
     type: "AUDIO" | "VIDEO" | "GROUP";
+    groupCallType?: "AUDIO" | "VIDEO" | null;
     sfuRoomId?: string;
     sessionId?: string;
   }) => void;
+  setType: (type: "AUDIO" | "VIDEO" | "GROUP") => void;
+  setGroupCallType: (groupCallType: "AUDIO" | "VIDEO" | null) => void;
   setConnecting: () => void;
   setConnected: (stream: MediaStream) => void;
   setRemoteStream: (stream: MediaStream) => void;
@@ -70,6 +77,7 @@ export interface CallSetters {
   setSpeaking: (speaking: boolean) => void;
   setAudioMuted: (muted: boolean) => void;
   setVideoMuted: (muted: boolean) => void;
+  setRemoteMediaState: (state: { audioMuted?: boolean; videoMuted?: boolean }) => void;
   setScreenSharing: (value: boolean) => void;
   setEnded: () => void;
   setReconnecting: () => void;
@@ -93,6 +101,7 @@ export const initialCallState: CallState = {
   callerName: null,
   callerAvatarUrl: null,
   type: null,
+  groupCallType: null,
   status: "idle",
   localStream: null,
   remoteStream: null,
@@ -105,6 +114,8 @@ export const initialCallState: CallState = {
   isSpeaking: false,
   audioMuted: false,
   videoMuted: false,
+  remoteAudioMuted: false,
+  remoteVideoMuted: false,
   isScreenSharing: false,
   callStartTime: null,
   isStarting: false,
@@ -124,10 +135,16 @@ export const useCallStore = create<CallStore>((set) => ({
       callerName: params.callerName ?? null,
       callerAvatarUrl: params.callerAvatarUrl ?? null,
       type: params.type,
+      groupCallType: params.groupCallType ?? null,
       status: "ringing",
       active: true,
       minimized: false,
       error: null,
+      audioMuted: false,
+      videoMuted: params.type === "AUDIO" || params.groupCallType === "AUDIO",
+      remoteAudioMuted: false,
+      remoteVideoMuted: false,
+      isScreenSharing: false,
     }),
 
   receiveCall: (params) =>
@@ -138,13 +155,23 @@ export const useCallStore = create<CallStore>((set) => ({
       callerName: params.callerName,
       callerAvatarUrl: params.callerAvatarUrl ?? null,
       type: params.type,
+      groupCallType: params.groupCallType ?? null,
       status: "ringing",
       active: true,
       minimized: false,
       error: null,
       sfuRoomId: params.sfuRoomId || null,
       sessionId: params.sessionId || null,
+      audioMuted: false,
+      videoMuted: params.type === "AUDIO" || params.groupCallType === "AUDIO",
+      remoteAudioMuted: false,
+      remoteVideoMuted: false,
+      isScreenSharing: false,
     }),
+
+  setType: (type) => set({ type }),
+
+  setGroupCallType: (groupCallType) => set({ groupCallType }),
 
   setConnecting: () => set({ status: "connecting" }),
 
@@ -200,6 +227,12 @@ export const useCallStore = create<CallStore>((set) => ({
 
   setVideoMuted: (muted) => set({ videoMuted: muted }),
 
+  setRemoteMediaState: (media) =>
+    set((state) => ({
+      remoteAudioMuted: media.audioMuted !== undefined ? media.audioMuted : state.remoteAudioMuted,
+      remoteVideoMuted: media.videoMuted !== undefined ? media.videoMuted : state.remoteVideoMuted,
+    })),
+
   setScreenSharing: (value) => set({ isScreenSharing: value }),
 
   setEnded: () =>
@@ -211,7 +244,13 @@ export const useCallStore = create<CallStore>((set) => ({
       peerStreams: [],
       sfuRoomId: null,
       sessionId: null,
+      groupCallType: null,
       callStartTime: null,
+      audioMuted: false,
+      videoMuted: false,
+      remoteAudioMuted: false,
+      remoteVideoMuted: false,
+      isScreenSharing: false,
     }),
 
   setMinimized: (value) => set({ minimized: value }),
