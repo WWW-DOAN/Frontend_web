@@ -1,92 +1,165 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
 import { ConversationPoll } from "@/src/common/interface/conversation-interface";
 import { chatService } from "@/src/common/service/chat-service";
 import { useAuthStore } from "@/src/common/store/useAuthStore";
-import { useChatStore } from "@/src/common/store/useChatStore";
 import { useTrans } from "@/src/common/utilities/hook/trans";
-import { resolveMediaUrl } from "@/src/common/helpers/displayMedia.helpers";
-import PollVotersDialog from "./PollVotersDialog";
 import {
-  Avatar,
-  AvatarGroup,
   Box,
+  Typography,
   Button,
   Chip,
-  CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   IconButton,
-  ListItemIcon,
+  Tooltip,
   Menu,
   MenuItem,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
   TextField,
-  Tooltip,
-  Typography,
+  ListItemIcon,
 } from "@mui/material";
-import PollOutlinedIcon from "@mui/icons-material/PollOutlined";
-import AddRoundedIcon from "@mui/icons-material/AddRounded";
-import MoreVertRoundedIcon from "@mui/icons-material/MoreVertRounded";
-import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
-import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
-import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
-import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
-import CheckBoxOutlinedIcon from "@mui/icons-material/CheckBoxOutlined";
-import CheckBoxOutlineBlankRoundedIcon from "@mui/icons-material/CheckBoxOutlineBlankRounded";
-import CheckBoxRoundedIcon from "@mui/icons-material/CheckBoxRounded";
-import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
-import RadioButtonUncheckedRoundedIcon from "@mui/icons-material/RadioButtonUncheckedRounded";
-import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
-import PeopleOutlineRoundedIcon from "@mui/icons-material/PeopleOutlineRounded";
-import TimerOutlinedIcon from "@mui/icons-material/TimerOutlined";
+import {
+  HowToVote,
+  Add,
+  MoreVert,
+  Lock,
+  Delete,
+  Edit,
+} from "@mui/icons-material";
 import { styled } from "@mui/material/styles";
+import { useState } from "react";
 import { toast } from "react-toastify";
 
-const CardRoot = styled(Box)<{ compact?: number }>(({ compact }) => ({
-  backgroundColor: "#FFFFFF",
-  border: "1px solid #E2E8F0",
-  borderRadius: 14,
-  padding: compact ? "14px" : "16px",
-  boxShadow: compact ? "0 1px 4px rgba(15, 23, 42, 0.05)" : "0 2px 8px rgba(15, 23, 42, 0.06)",
-  width: compact ? "min(360px, 100%)" : "100%",
+const Root = styled(Box)(({ theme }) => ({
+  backgroundColor: "#F8FAFF",
+  border: "1px solid #E5E7EB",
+  borderRadius: "12px",
+  padding: "16px",
+  margin: "8px 0",
 }));
 
-const OptionRow = styled(Box)<{ selected?: number; locked?: number }>(({ selected, locked }) => ({
+const Header = styled(Box)({
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  marginBottom: "12px",
+});
+
+const Question = styled(Typography)({
+  fontSize: "16px",
+  fontWeight: 600,
+  color: "#111827",
+  marginBottom: "4px",
+});
+
+const Meta = styled(Box)({
+  display: "flex",
+  alignItems: "center",
+  gap: "8px",
+  marginBottom: "12px",
+});
+
+const StatusChip = styled(Chip)(({ status }: { status: string }) => ({
+  fontSize: "11px",
+  height: "20px",
+  ...(status === "OPEN" && {
+    backgroundColor: "#D1FAE5",
+    color: "#065F46",
+  }),
+  ...(status === "CLOSED" && {
+    backgroundColor: "#FEE2E2",
+    color: "#991B1B",
+  }),
+}));
+
+const OptionsContainer = styled(Box)({
+  display: "flex",
+  flexDirection: "column",
+  gap: "8px",
+  marginBottom: "12px",
+});
+
+const OptionItem = styled(Box)<{ theme?: any }>(({ theme }) => ({
   position: "relative",
-  overflow: "hidden",
-  borderRadius: 10,
-  border: selected ? "1.5px solid #0068FF" : "1px solid #E2E8F0",
-  backgroundColor: selected ? "#F0F7FF" : "#F8FAFC",
-  padding: "9px 12px",
-  cursor: locked ? "default" : "pointer",
-  transition: "border-color 0.2s ease, background-color 0.2s ease",
-  "&:hover": locked
-    ? {}
-    : {
-        borderColor: "#0068FF",
-        backgroundColor: "#F0F7FF",
-      },
+  padding: "12px",
+  borderRadius: "8px",
+  border: "2px solid #E5E7EB",
+  backgroundColor: "#FFFFFF",
+  cursor: "pointer",
+  transition: "all 0.2s ease",
+  "&:hover": {
+    borderColor: "#3B82F6",
+    backgroundColor: "#F9FAFB",
+  },
+  '&[data-is-voted="true"]': {
+    borderColor: "#3B82F6",
+    backgroundColor: "#EFF6FF",
+  },
+  '&[data-is-voted="true"]:hover': {
+    borderColor: "#3B82F6",
+    backgroundColor: "#EFF6FF",
+  },
 }));
 
-const ProgressFill = styled(Box)<{ percentage: number; active?: number }>(({ percentage, active }) => ({
+const ProgressBar = styled(Box)(({ percentage }: { percentage: number }) => ({
   position: "absolute",
   top: 0,
   left: 0,
-  bottom: 0,
-  width: `${Math.min(100, Math.max(0, percentage))}%`,
-  backgroundColor: active ? "rgba(0, 104, 255, 0.16)" : "rgba(59, 130, 246, 0.10)",
-  transition: "width 0.35s ease",
+  height: "100%",
+  width: `${percentage}%`,
+  backgroundColor: "rgba(59, 130, 246, 0.1)",
+  borderRadius: "6px",
   zIndex: 0,
-  pointerEvents: "none",
+}));
+
+const OptionContent = styled(Box)({
+  position: "relative",
+  zIndex: 1,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+});
+
+const OptionLabel = styled(Typography)({
+  fontSize: "14px",
+  fontWeight: 500,
+  color: "#111827",
+});
+
+const VoteCount = styled(Typography)({
+  fontSize: "12px",
+  color: "#6B7280",
+  fontWeight: 600,
+});
+
+const Percentage = styled(Typography)({
+  fontSize: "12px",
+  color: "#3B82F6",
+  fontWeight: 600,
+});
+
+const Actions = styled(Box)({
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: "8px",
+});
+
+const VoteButton = styled(Button)<{ isVoted?: boolean }>(({ isVoted }) => ({
+  ...(isVoted && {
+    backgroundColor: "#3B82F6",
+    color: "#FFFFFF",
+    "&:hover": {
+      backgroundColor: "#2563EB",
+    },
+  }),
 }));
 
 interface PollItemProps {
   poll: ConversationPoll;
   conversationId: string;
-  compact?: boolean;
   onVote?: () => void;
   onWithdraw?: () => void;
   onClose?: () => void;
@@ -94,26 +167,9 @@ interface PollItemProps {
   onDelete?: () => void;
 }
 
-function sameSelection(a: string[], b: string[]): boolean {
-  if (a.length !== b.length) return false;
-  const setA = new Set(a);
-  return b.every((id) => setA.has(id));
-}
-
-function formatDeadline(iso?: string): string {
-  if (!iso) return "";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  return `${d.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })} ${d.toLocaleDateString(
-    "vi-VN",
-    { day: "2-digit", month: "2-digit" }
-  )}`;
-}
-
 export default function PollItem({
   poll,
   conversationId,
-  compact = false,
   onVote,
   onWithdraw,
   onClose,
@@ -121,65 +177,28 @@ export default function PollItem({
   onDelete,
 }: PollItemProps) {
   const t = useTrans();
-  const authUserId = useAuthStore((s) => s.authData?.data?.user?.id);
-  const storeUserId = useChatStore((s) => s.currentUserId);
-  const currentUserId = authUserId || storeUserId || "";
-
-  const listConversation = useChatStore((s) => s.listConversation);
-  const convDetail = useChatStore((s) => s.conversationDetailById?.[conversationId]);
-
-  const isGroupAdmin = useMemo(() => {
-    const members = (
-      convDetail?.members?.length
-        ? convDetail.members
-        : listConversation.find((c) => c.id === conversationId)?.members
-    ) as any[] | undefined;
-    const me = members?.find((m) => (m.userId || m.id) === currentUserId);
-    return me?.role === "OWNER" || me?.role === "ADMIN";
-  }, [convDetail, listConversation, conversationId, currentUserId]);
-
-  const savedVoteIds = useMemo(() => poll.userVote?.optionIds || [], [poll.userVote?.optionIds]);
-  const [selectedOptions, setSelectedOptions] = useState<string[]>(savedVoteIds);
+  const authData = useAuthStore((s) => s.authData);
   const [isVoting, setIsVoting] = useState(false);
+  const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [showInlineAdd, setShowInlineAdd] = useState(false);
+  const [addOptionOpen, setAddOptionOpen] = useState(false);
   const [newOptionLabel, setNewOptionLabel] = useState("");
   const [isAddingOption, setIsAddingOption] = useState(false);
-  const [votersModalOpen, setVotersModalOpen] = useState(false);
 
-  useEffect(() => {
-    setSelectedOptions(savedVoteIds);
-  }, [savedVoteIds, poll.id]);
+  const totalVotes = poll.options.reduce((sum, option) => sum + option.votes, 0);
+  const isOwner = poll.createdBy === authData?.data?.user?.id;
+  const hasVoted = poll.userVote && poll.userVote.optionIds.length > 0;
+  const isExpired = poll.expiresAt && new Date(poll.expiresAt) < new Date();
 
-  const totalVotes = poll.options.reduce((sum, option) => sum + (option.votes || 0), 0);
-  const totalVoters = poll.totalVoters ?? totalVotes;
-  const isCreator = poll.createdBy === currentUserId;
-  const canManagePoll = isCreator || isGroupAdmin;
-  const hasVoted = savedVoteIds.length > 0;
-  const isExpired = Boolean(poll.expiresAt && new Date(poll.expiresAt) < new Date());
-  const isOpen = poll.status === "OPEN" && !isExpired;
-  const hasSelectionChanged = !sameSelection(selectedOptions, savedVoteIds);
-
-  const handleOptionClick = (optionId: string) => {
-    if (!isOpen) return;
-
-    if (poll.allowMultiple) {
-      setSelectedOptions((prev) =>
-        prev.includes(optionId) ? prev.filter((id) => id !== optionId) : [...prev, optionId]
-      );
-    } else {
-      setSelectedOptions([optionId]);
-    }
-  };
-
-  const handleSubmitVote = async () => {
+  const handleVote = async () => {
     if (selectedOptions.length === 0) {
       toast.error(t("POLL.VOTE_REQUIRED"));
       return;
     }
-    if (!isOpen) {
+
+    if (poll.status !== "OPEN" || isExpired) {
       toast.error(t("POLL.POLL_CLOSED"));
       return;
     }
@@ -189,503 +208,263 @@ export default function PollItem({
       await chatService.votePoll(conversationId, poll.id, {
         option_ids: selectedOptions,
       });
-      toast.success(hasVoted ? "Đã cập nhật bình chọn" : t("POLL.VOTE_SUCCESS"));
+      toast.success(t("POLL.VOTE_SUCCESS"));
       onVote?.();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || t("POLL.VOTE_FAILED"));
+    } catch (error) {
+      toast.error(t("POLL.VOTE_FAILED"));
     } finally {
       setIsVoting(false);
     }
   };
 
   const handleWithdraw = async () => {
-    setIsVoting(true);
     try {
       await chatService.withdrawVote(conversationId, poll.id);
-      setSelectedOptions([]);
       toast.success(t("POLL.WITHDRAW_SUCCESS"));
       onWithdraw?.();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || t("POLL.WITHDRAW_FAILED"));
-    } finally {
-      setIsVoting(false);
+    } catch (error) {
+      toast.error(t("POLL.WITHDRAW_FAILED"));
     }
   };
 
-  const handleClosePoll = async () => {
+  const handleClose = async () => {
     try {
       await chatService.closePoll(conversationId, poll.id);
       toast.success(t("POLL.CLOSE_SUCCESS"));
       onClose?.();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Không thể khóa cuộc bình chọn");
+    } catch (error) {
+      toast.error("Không thể đóng cuộc bình chọn");
     }
   };
 
-  const handleDeletePoll = async () => {
+  const handleDelete = async () => {
     setIsDeleting(true);
     try {
       await chatService.deletePoll(conversationId, poll.id);
       toast.success("Đã xóa cuộc bình chọn");
       setDeleteDialogOpen(false);
       onDelete?.();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Không thể xóa cuộc bình chọn");
+    } catch (error) {
+      toast.error("Không thể xóa cuộc bình chọn");
     } finally {
       setIsDeleting(false);
     }
   };
 
   const handleAddOption = async () => {
-    const trimmed = newOptionLabel.trim();
-    if (!trimmed) return;
+    if (!newOptionLabel.trim()) return;
     setIsAddingOption(true);
     try {
-      await chatService.addPollOption(conversationId, poll.id, trimmed);
-      toast.success("Đã thêm lựa chọn mới");
+      await chatService.addPollOption(conversationId, poll.id, newOptionLabel.trim());
+      toast.success("Đã thêm lựa chọn");
       setNewOptionLabel("");
-      setShowInlineAdd(false);
-      onVote?.();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Không thể thêm lựa chọn");
+      setAddOptionOpen(false);
+      onVote?.(); // refresh poll
+    } catch (error) {
+      toast.error("Không thể thêm lựa chọn");
     } finally {
       setIsAddingOption(false);
     }
   };
 
+  const handleOptionClick = (optionId: string) => {
+    if (poll.status !== "OPEN" || isExpired) return;
+
+    if (poll.allowMultiple) {
+      setSelectedOptions((prev) =>
+        prev.includes(optionId)
+          ? prev.filter((id) => id !== optionId)
+          : [...prev, optionId]
+      );
+    } else {
+      setSelectedOptions([optionId]);
+    }
+  };
+
   return (
-    <>
-      <CardRoot compact={compact ? 1 : 0}>
-        {/* Header */}
-        <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 1 }}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0 }}>
-            <Box
-              sx={{
-                width: 28,
-                height: 28,
-                borderRadius: 1.5,
-                bgcolor: "#EFF6FF",
-                color: "#0068FF",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                flexShrink: 0,
-              }}
-            >
-              <PollOutlinedIcon sx={{ fontSize: 17 }} />
-            </Box>
-            <Box sx={{ minWidth: 0 }}>
-              <Typography sx={{ fontSize: 11.5, color: "#64748B", fontWeight: 500 }} noWrap>
-                {poll.createdByName ? `${poll.createdByName} đã tạo bình chọn` : "Bình chọn nhóm"}
-              </Typography>
-            </Box>
-          </Box>
-
-          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, flexShrink: 0 }}>
-            <Chip
-              size="small"
-              icon={!isOpen ? <LockOutlinedIcon sx={{ fontSize: "13px !important" }} /> : undefined}
-              label={isExpired ? "Hết hạn" : poll.status === "OPEN" ? "Đang mở" : "Đã khóa"}
-              sx={{
-                height: 20,
-                fontSize: 11,
-                fontWeight: 600,
-                bgcolor: isOpen ? "#DCFCE7" : "#F1F5F9",
-                color: isOpen ? "#166534" : "#475569",
-              }}
+    <Root>
+      <Header>
+        <Box>
+          <Question>{poll.question}</Question>
+          <Meta>
+            <StatusChip
+              label={isExpired ? "Hết hạn" : poll.status === "OPEN" ? "Đang mở" : "Đã đóng"}
+              status={isExpired ? "CLOSED" : poll.status}
             />
-            <IconButton size="small" onClick={(e) => setMenuAnchor(e.currentTarget)}>
-              <MoreVertRoundedIcon sx={{ fontSize: 18, color: "#64748B" }} />
-            </IconButton>
-          </Box>
-        </Box>
-
-        {/* Question */}
-        <Typography
-          sx={{
-            fontSize: 15,
-            fontWeight: 700,
-            color: "#0F172A",
-            mt: 1,
-            mb: 0.75,
-            lineHeight: 1.4,
-            wordBreak: "break-word",
-          }}
-        >
-          {poll.question}
-        </Typography>
-
-        {/* Meta tags + Voters summary trigger */}
-        <Box sx={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 1, mb: 1.25 }}>
-          <Box
-            onClick={() => setVotersModalOpen(true)}
-            sx={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 0.35,
-              cursor: "pointer",
-              color: "#0068FF",
-              "&:hover": { textDecoration: "underline" },
-            }}
-          >
-            <PeopleOutlineRoundedIcon sx={{ fontSize: 15 }} />
-            <Typography sx={{ fontSize: 12, fontWeight: 600 }}>
-              {totalVoters} người đã bình chọn
+            {poll.isAnonymous && (
+              <Tooltip title="Bình chọn ẩn danh">
+                <Lock sx={{ fontSize: 16, color: "#6B7280" }} />
+              </Tooltip>
+            )}
+            {poll.allowMultiple && (
+              <Tooltip title="Chọn nhiều lựa chọn">
+                <HowToVote sx={{ fontSize: 16, color: "#6B7280" }} />
+              </Tooltip>
+            )}
+            <Typography variant="caption" color="#6B7280">
+              {totalVotes} bình chọn
             </Typography>
-            <ChevronRightRoundedIcon sx={{ fontSize: 15, ml: -0.25 }} />
-          </Box>
-
-          {poll.allowMultiple && (
-            <Tooltip title="Có thể chọn nhiều phương án">
-              <Box sx={{ display: "inline-flex", alignItems: "center", gap: 0.3, color: "#64748B" }}>
-                <CheckBoxOutlinedIcon sx={{ fontSize: 14 }} />
-                <Typography sx={{ fontSize: 11.5 }}>Chọn nhiều</Typography>
-              </Box>
-            </Tooltip>
-          )}
-
-          {poll.isAnonymous && (
-            <Tooltip title="Bình chọn ẩn danh">
-              <Box sx={{ display: "inline-flex", alignItems: "center", gap: 0.3, color: "#64748B" }}>
-                <VisibilityOffOutlinedIcon sx={{ fontSize: 14 }} />
-                <Typography sx={{ fontSize: 11.5 }}>Ẩn danh</Typography>
-              </Box>
-            </Tooltip>
-          )}
+          </Meta>
         </Box>
-
-        {/* Options list */}
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 0.9 }}>
-          {poll.options.map((option) => {
-            const pct = totalVotes > 0 ? Math.round((option.votes / totalVotes) * 100) : 0;
-            const isSelected = selectedOptions.includes(option.id);
-            const isUserSaved = savedVoteIds.includes(option.id);
-            const voters = !poll.isAnonymous ? poll.votersByOption?.[option.id] || [] : [];
-
-            return (
-              <OptionRow
-                key={option.id}
-                selected={isSelected ? 1 : 0}
-                locked={!isOpen ? 1 : 0}
-                onClick={() => handleOptionClick(option.id)}
+        {isOwner && (
+          <Box>
+            {poll.status === "OPEN" && (
+              <Tooltip title="Đóng bình chọn">
+                <IconButton size="small" onClick={handleClose}>
+                  <Lock sx={{ fontSize: 18 }} />
+                </IconButton>
+              </Tooltip>
+            )}
+            <Tooltip title="Thêm tùy chọn">
+              <IconButton
+                size="small"
+                onClick={(e) => setMenuAnchor(e.currentTarget)}
               >
-                {(hasVoted || !isOpen || totalVotes > 0) && (
-                  <ProgressFill percentage={pct} active={isSelected || isUserSaved ? 1 : 0} />
-                )}
-
-                <Box
-                  sx={{
-                    position: "relative",
-                    zIndex: 1,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: 1,
-                  }}
-                >
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0, flex: 1 }}>
-                    {isOpen &&
-                      (poll.allowMultiple ? (
-                        isSelected ? (
-                          <CheckBoxRoundedIcon sx={{ fontSize: 18, color: "#0068FF", flexShrink: 0 }} />
-                        ) : (
-                          <CheckBoxOutlineBlankRoundedIcon sx={{ fontSize: 18, color: "#94A3B8", flexShrink: 0 }} />
-                        )
-                      ) : isSelected ? (
-                        <CheckCircleRoundedIcon sx={{ fontSize: 18, color: "#0068FF", flexShrink: 0 }} />
-                      ) : (
-                        <RadioButtonUncheckedRoundedIcon sx={{ fontSize: 18, color: "#94A3B8", flexShrink: 0 }} />
-                      ))}
-                    <Typography
-                      sx={{
-                        fontSize: 13.5,
-                        fontWeight: isSelected ? 600 : 500,
-                        color: "#1E293B",
-                        wordBreak: "break-word",
-                      }}
-                    >
-                      {option.label}
-                    </Typography>
-                  </Box>
-
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, flexShrink: 0 }}>
-                    {!poll.isAnonymous && voters.length > 0 && (
-                      <AvatarGroup
-                        max={3}
-                        sx={{
-                          "& .MuiAvatar-root": {
-                            width: 19,
-                            height: 19,
-                            fontSize: 10,
-                            border: "1.5px solid #fff",
-                          },
-                        }}
-                      >
-                        {voters.map((voter) => (
-                          <Tooltip key={voter.userId} title={voter.displayName}>
-                            <Avatar src={resolveMediaUrl(voter.avatarUrl) || undefined}>
-                              {voter.displayName.charAt(0).toUpperCase()}
-                            </Avatar>
-                          </Tooltip>
-                        ))}
-                      </AvatarGroup>
-                    )}
-
-                    {(hasVoted || !isOpen || option.votes > 0) && (
-                      <Typography
-                        sx={{
-                          fontSize: 12,
-                          fontWeight: 700,
-                          color: isSelected ? "#0068FF" : "#475569",
-                          minWidth: 22,
-                          textAlign: "right",
-                        }}
-                      >
-                        {option.votes}
-                      </Typography>
-                    )}
-                  </Box>
-                </Box>
-              </OptionRow>
-            );
-          })}
-        </Box>
-
-        {/* Inline add option */}
-        {isOpen && poll.allowAddOption && (
-          <Box sx={{ mt: 1 }}>
-            {showInlineAdd ? (
-              <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
-                <TextField
-                  size="small"
-                  fullWidth
-                  autoFocus
-                  placeholder="Nhập phương án mới..."
-                  value={newOptionLabel}
-                  onChange={(e) => setNewOptionLabel(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      handleAddOption();
-                    } else if (e.key === "Escape") {
-                      setShowInlineAdd(false);
-                      setNewOptionLabel("");
-                    }
-                  }}
-                  slotProps={{ htmlInput: { maxLength: 150 } }}
-                  disabled={isAddingOption}
-                  sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2, fontSize: 13 } }}
-                />
-                <Button
-                  size="small"
-                  variant="contained"
-                  disabled={!newOptionLabel.trim() || isAddingOption}
-                  onClick={handleAddOption}
-                  sx={{ textTransform: "none", minWidth: 64, borderRadius: 2, bgcolor: "#0068FF" }}
-                >
-                  {isAddingOption ? <CircularProgress size={16} color="inherit" /> : "Thêm"}
-                </Button>
-                <Button
-                  size="small"
+                <MoreVert sx={{ fontSize: 18 }} />
+              </IconButton>
+            </Tooltip>
+            <Menu
+              anchorEl={menuAnchor}
+              open={Boolean(menuAnchor)}
+              onClose={() => setMenuAnchor(null)}
+            >
+              {onEdit && (
+                <MenuItem
                   onClick={() => {
-                    setShowInlineAdd(false);
-                    setNewOptionLabel("");
+                    setMenuAnchor(null);
+                    onEdit();
                   }}
-                  disabled={isAddingOption}
-                  sx={{ textTransform: "none", minWidth: 0, color: "#64748B" }}
                 >
-                  Hủy
-                </Button>
-              </Box>
-            ) : (
-              <Button
-                size="small"
-                startIcon={<AddRoundedIcon sx={{ fontSize: 17 }} />}
-                onClick={() => setShowInlineAdd(true)}
-                sx={{
-                  textTransform: "none",
-                  fontSize: 12.5,
-                  fontWeight: 600,
-                  color: "#475569",
-                  px: 0.75,
-                  "&:hover": { color: "#0068FF", bgcolor: "#EFF6FF" },
+                  <ListItemIcon><Edit fontSize="small" /></ListItemIcon>
+                  Chỉnh sửa
+                </MenuItem>
+              )}
+              <MenuItem
+                onClick={() => {
+                  setMenuAnchor(null);
+                  setDeleteDialogOpen(true);
                 }}
+                sx={{ color: "error.main" }}
               >
-                Thêm phương án
-              </Button>
-            )}
+                <ListItemIcon><Delete fontSize="small" color="error" /></ListItemIcon>
+                Xóa cuộc bình chọn
+              </MenuItem>
+            </Menu>
           </Box>
         )}
+      </Header>
 
-        {/* Footer actions & deadline */}
-        <Box
-          sx={{
-            mt: 1.5,
-            pt: 1.25,
-            borderTop: "1px solid #F1F5F9",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 1,
-            flexWrap: "wrap",
-          }}
-        >
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            {isOpen && (!hasVoted || hasSelectionChanged) && (
-              <Button
-                size="small"
+      <OptionsContainer>
+        {poll.options.map((option) => {
+          const percentage = totalVotes > 0 ? (option.votes / totalVotes) * 100 : 0;
+          const isSelected = selectedOptions.includes(option.id);
+          const isUserVoted = hasVoted && poll.userVote?.optionIds.includes(option.id);
+
+          return (
+            <OptionItem
+              key={option.id}
+              data-is-voted={isUserVoted}
+              onClick={() => handleOptionClick(option.id)}
+            >
+              {(hasVoted || poll.status === "CLOSED") && (
+                <ProgressBar percentage={percentage} />
+              )}
+              <OptionContent>
+                <OptionLabel>{option.label}</OptionLabel>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  {(hasVoted || poll.status === "CLOSED") && (
+                    <>
+                      <VoteCount>{option.votes}</VoteCount>
+                      <Percentage>{percentage.toFixed(1)}%</Percentage>
+                    </>
+                  )}
+                  {isSelected && poll.status === "OPEN" && (
+                    <HowToVote sx={{ fontSize: 16, color: "#3B82F6" }} />
+                  )}
+                </Box>
+              </OptionContent>
+            </OptionItem>
+          );
+        })}
+      </OptionsContainer>
+
+      <Actions>
+        {poll.status === "OPEN" && !isExpired && (
+          <>
+            {!hasVoted ? (
+              <VoteButton
                 variant="contained"
-                onClick={handleSubmitVote}
+                onClick={handleVote}
                 disabled={selectedOptions.length === 0 || isVoting}
-                sx={{
-                  textTransform: "none",
-                  fontWeight: 600,
-                  fontSize: 12.5,
-                  borderRadius: 2,
-                  px: 2,
-                  bgcolor: "#0068FF",
-                  "&:hover": { bgcolor: "#0052CC" },
-                }}
+                isVoted={selectedOptions.length > 0}
               >
-                {isVoting
-                  ? "Đang gửi..."
-                  : hasVoted
-                    ? "Cập nhật lựa chọn"
-                    : "Bình chọn"}
-              </Button>
+                {isVoting ? "Đang bình chọn..." : "Bình chọn"}
+              </VoteButton>
+            ) : (
+              <Box sx={{ display: "flex", gap: 1 }}>
+                <Button
+                  variant="outlined"
+                  onClick={handleWithdraw}
+                  disabled={isVoting}
+                >
+                  Thu hồi
+                </Button>
+                {poll.allowAddOption && (
+                  <Button
+                    variant="outlined"
+                    startIcon={<Add />}
+                    onClick={() => setAddOptionOpen(true)}
+                  >
+                    Thêm lựa chọn
+                  </Button>
+                )}
+              </Box>
             )}
-
-            {isOpen && hasVoted && !hasSelectionChanged && (
-              <Button
-                size="small"
-                variant="outlined"
-                onClick={handleWithdraw}
-                disabled={isVoting}
-                sx={{
-                  textTransform: "none",
-                  fontWeight: 600,
-                  fontSize: 12.5,
-                  borderRadius: 2,
-                  borderColor: "#CBD5E1",
-                  color: "#475569",
-                }}
-              >
-                Thu hồi phiếu
-              </Button>
-            )}
-          </Box>
-
-          {poll.expiresAt && (
-            <Box sx={{ display: "inline-flex", alignItems: "center", gap: 0.4, color: "#64748B" }}>
-              <TimerOutlinedIcon sx={{ fontSize: 14 }} />
-              <Typography sx={{ fontSize: 11.5 }}>
-                {isExpired ? "Đã kết thúc: " : "Kết thúc: "}
-                {formatDeadline(poll.expiresAt)}
-              </Typography>
-            </Box>
-          )}
-        </Box>
-      </CardRoot>
-
-      {/* Menu */}
-      <Menu
-        anchorEl={menuAnchor}
-        open={Boolean(menuAnchor)}
-        onClose={() => setMenuAnchor(null)}
-        slotProps={{ paper: { sx: { borderRadius: 2.5, minWidth: 190 } } }}
-      >
-        <MenuItem
-          onClick={() => {
-            setMenuAnchor(null);
-            setVotersModalOpen(true);
-          }}
-        >
-          <ListItemIcon>
-            <PeopleOutlineRoundedIcon fontSize="small" />
-          </ListItemIcon>
-          Xem người bình chọn
-        </MenuItem>
-
-        {isCreator && isOpen && onEdit && (
-          <MenuItem
-            onClick={() => {
-              setMenuAnchor(null);
-              onEdit();
-            }}
-          >
-            <ListItemIcon>
-              <EditOutlinedIcon fontSize="small" />
-            </ListItemIcon>
-            Chỉnh sửa câu hỏi
-          </MenuItem>
+          </>
         )}
-
-        {canManagePoll && isOpen && (
-          <MenuItem
-            onClick={() => {
-              setMenuAnchor(null);
-              handleClosePoll();
-            }}
-          >
-            <ListItemIcon>
-              <LockOutlinedIcon fontSize="small" />
-            </ListItemIcon>
-            Khóa bình chọn
-          </MenuItem>
-        )}
-
-        {canManagePoll && (
-          <MenuItem
-            onClick={() => {
-              setMenuAnchor(null);
-              setDeleteDialogOpen(true);
-            }}
-            sx={{ color: "error.main" }}
-          >
-            <ListItemIcon>
-              <DeleteOutlineRoundedIcon fontSize="small" color="error" />
-            </ListItemIcon>
-            Xóa bình chọn
-          </MenuItem>
-        )}
-      </Menu>
-
-      {/* Voters modal */}
-      <PollVotersDialog
-        open={votersModalOpen}
-        poll={poll}
-        onClose={() => setVotersModalOpen(false)}
-      />
-
-      {/* Delete confirmation */}
-      <Dialog
-        open={deleteDialogOpen}
-        onClose={() => setDeleteDialogOpen(false)}
-        maxWidth="xs"
-        fullWidth
-        slotProps={{ paper: { sx: { borderRadius: 3 } } }}
-      >
-        <DialogTitle sx={{ fontSize: 16, fontWeight: 700 }}>Xóa bình chọn?</DialogTitle>
-        <DialogContent>
-          <Typography sx={{ fontSize: 13.5, color: "#4B5563" }}>
-            Bạn có chắc chắn muốn xóa cuộc bình chọn &quot;{poll.question}&quot;? Dữ liệu bình chọn sẽ không thể khôi phục.
+        
+        {poll.expiresAt && (
+          <Typography variant="caption" color="#6B7280">
+            Hết hạn: {new Date(poll.expiresAt).toLocaleString()}
           </Typography>
+        )}
+      </Actions>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Xóa cuộc bình chọn?</DialogTitle>
+        <DialogContent>
+          <Typography>Bạn có chắc chắn muốn xóa cuộc bình chọn &quot;{poll.question}&quot;? Hành động này không thể hoàn tác.</Typography>
         </DialogContent>
-        <DialogActions sx={{ px: 2.5, pb: 2 }}>
-          <Button onClick={() => setDeleteDialogOpen(false)} disabled={isDeleting} sx={{ textTransform: "none" }}>
-            Hủy
-          </Button>
-          <Button
-            onClick={handleDeletePoll}
-            color="error"
-            disabled={isDeleting}
-            variant="contained"
-            sx={{ textTransform: "none" }}
-          >
+        <DialogActions>
+          <Button onClick={() => setDeleteDialogOpen(false)} disabled={isDeleting}>Hủy</Button>
+          <Button onClick={handleDelete} color="error" disabled={isDeleting} variant="contained">
             {isDeleting ? "Đang xóa..." : "Xóa"}
           </Button>
         </DialogActions>
       </Dialog>
-    </>
+
+      {/* Add Option Dialog */}
+      <Dialog open={addOptionOpen} onClose={() => setAddOptionOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Thêm lựa chọn</DialogTitle>
+        <DialogContent>
+          <TextField
+            fullWidth
+            autoFocus
+            label="Nội dung lựa chọn"
+            value={newOptionLabel}
+            onChange={(e) => setNewOptionLabel(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleAddOption()}
+            sx={{ mt: 1 }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setAddOptionOpen(false)} disabled={isAddingOption}>Hủy</Button>
+          <Button onClick={handleAddOption} disabled={!newOptionLabel.trim() || isAddingOption} variant="contained">
+            {isAddingOption ? "Đang thêm..." : "Thêm"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Root>
   );
 }

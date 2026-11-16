@@ -1,4 +1,4 @@
-export type AttachmentType = "image" | "document" | "audio" | "video" | "contact" | "location" | "reminder" | "note" | "todo" | "poll";
+export type AttachmentType = "image" | "document" | "audio" | "video" | "contact" | "location" | "reminder" | "note" | "todo";
 
 export interface ReactionDto {
   emoji: string;
@@ -138,8 +138,6 @@ export enum SystemEventType {
   CONVERSATION_UPDATED = "CONVERSATION_UPDATED",
   GROUP_SETTINGS_UPDATED = "GROUP_SETTINGS_UPDATED",
   JOIN_REQUEST_CREATED = "JOIN_REQUEST_CREATED",
-  POLL_CREATED = "POLL_CREATED",
-  POLL_UPDATED = "POLL_UPDATED",
   CALL_LOG = "CALL_LOG",
 }
 
