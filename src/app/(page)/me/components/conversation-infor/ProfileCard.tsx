@@ -202,6 +202,9 @@ export default function ProfileCard({ onAddMember }: ProfileCardProps) {
   const t = useTrans();
   const listConversation = useChatStore((s) => s.listConversation);
   const activeConversationId = useChatStore((s) => s.activeConversationId);
+  const conversationDetail = useChatStore((s) =>
+    activeConversationId ? s.conversationDetailById?.[activeConversationId] : undefined
+  );
   const fetchListConversation = useChatStore((s) => s.fetchListConversation);
   const currentUserId = useChatStore((s) => s.currentUserId);
 
@@ -214,7 +217,9 @@ export default function ProfileCard({ onAddMember }: ProfileCardProps) {
     currentConversation?.type === "group" ||
     currentConversation?.type === "GROUP";
 
-  const members = currentConversation?.members ?? [];
+  const members = (conversationDetail?.members?.length
+    ? conversationDetail.members
+    : currentConversation?.members) ?? [];
   const otherMember = !isGroup
     ? members.find((m: any) => m.userId !== currentUserId)
     : null;
@@ -222,7 +227,9 @@ export default function ProfileCard({ onAddMember }: ProfileCardProps) {
     (m: any) => m.userId === currentUserId
   );
   const currentUserRole = (currentUserMember as any)?.role;
-  const canEdit = currentUserRole === "OWNER" || currentUserRole === "ADMIN";
+  const activeSettings = conversationDetail?.settings ?? currentConversation?.settings;
+  const canUpdateGroupInfo = isGroup && activeSettings?.permissions?.canUpdateGroupInfo === true;
+  const canEdit = currentUserRole === "OWNER" || currentUserRole === "ADMIN" || canUpdateGroupInfo;
 
   const refresh = () => fetchListConversation({ page: 1, limit: 20 });
 

@@ -5,6 +5,7 @@ import { styled } from "@mui/material/styles";
 import { useMemo } from "react";
 import { PaginationState, UiMessage, AttachmentDto } from "@/src/common/interface/chat-interface";
 import { useChatStore } from "@/src/common/store/useChatStore";
+import type { TypingUser } from "@/src/common/store/useChatStore";
 import { pinMessage, toggleReaction, unpinMessage, deleteMessageForMe } from "@/src/common/action/chat.action";
 import { resolveMediaUrl } from "@/src/common/helpers/displayMedia.helpers";
 import MessageItem from "./MessageItem";
@@ -90,6 +91,12 @@ const DateLabel = styled(Typography)({
   boxShadow: "0 1px 2px rgba(0,0,0,0.06)",
 });
 
+// Stable reference: returning a fresh [] from a zustand selector makes
+// getSnapshot unstable and triggers "Maximum update depth exceeded".
+// Defined at module level (not import-time-empty-array in render) so the
+// identity never changes between React renders.
+const EMPTY_TYPING_USERS: TypingUser[] = [];
+
 const formatDateLabel = (timestamp: number): string => {
   const date = new Date(timestamp);
   const now = new Date();
@@ -163,7 +170,7 @@ export default function MessageList({
   }, [members, currentUserId]);
 
   const typingUsers = useChatStore(
-    (s) => (conversationId ? s.typingUsersByConversation[conversationId] : undefined) || []
+    (s) => (conversationId ? s.typingUsersByConversation[conversationId] : undefined) ?? EMPTY_TYPING_USERS
   );
   const isGroup =
     convDetail?.type === "group" ||
@@ -171,9 +178,20 @@ export default function MessageList({
     convFromList?.type === "group" ||
     convFromList?.type === "GROUP";
 
+  const currentMemberRole = memberRolesMap.get(currentUserId);
+  const isGroupAdmin = currentMemberRole === "OWNER" || currentMemberRole === "ADMIN";
+  const groupSettings = (convDetail as any)?.settings ?? (convFromList as any)?.settings;
+  const canPinMessage = !isGroup || isGroupAdmin || groupSettings?.permissions?.canPinMessage !== false;
+
   const GROUP_TIME_LIMIT_MS = 2 * 60 * 1000; // 2 minutes
 
+  const isZaiBotMessage = (msg: UiMessage): boolean =>
+    msg.senderId === "00000000-0000-0000-0000-000000000001" ||
+    (msg as any).type === "bot" ||
+    /zai/i.test(msg.senderName || "");
+
   const resolveSenderName = (msg: UiMessage): string => {
+    if (isZaiBotMessage(msg)) return "ZAi";
     if (msg.senderName && msg.senderName !== t("CHAT.USER")) return msg.senderName;
     const member = members?.find((m) => m.userId === msg.senderId);
     return member?.displayName || member?.username || msg.senderName || t("CHAT.USER");
@@ -280,6 +298,9 @@ export default function MessageList({
                       id: msg.senderId,
                       name: resolveSenderName(msg),
                       avatar: (() => {
+                        if (isZaiBotMessage(msg)) {
+                          return "https://res.cloudinary.com/dokskn4kz/image/upload/v1794724426/zalo-chat/zai_bot_avatar.png";
+                        }
                         const member = members?.find((m) => m.userId === msg.senderId);
                         return resolveMediaUrl(member?.avatarUrl) || undefined;
                       })(),
@@ -304,8 +325,8 @@ export default function MessageList({
                   reactions={reactionsForConv[msg.messageId] || []}
                   onReply={() => onReplyMessage(msg)}
                   onForward={() => onForwardMessage?.(msg.messageId, conversationId)}
-                  onPin={() => pinMessage(conversationId, msg.messageId, msg.createdAt)}
-                  onUnpin={() => unpinMessage(conversationId, msg.messageId, msg.createdAt)}
+                  onPin={canPinMessage ? () => pinMessage(conversationId, msg.messageId, msg.createdAt) : undefined}
+                  onUnpin={canPinMessage ? () => unpinMessage(conversationId, msg.messageId, msg.createdAt) : undefined}
                   onEdit={(newContent) => onEditMessage?.(conversationId, msg.messageId, newContent, msg.createdAt)}
                   onReact={(emoji) => toggleReaction(conversationId, msg.messageId, msg.createdAt, emoji)}
                   onImageClick={(url, mediaList, index) => onImageClick?.(url, (mediaList || msg.attachments) as AttachmentDto[], index || 0)}

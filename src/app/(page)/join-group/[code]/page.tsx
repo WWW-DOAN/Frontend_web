@@ -2,7 +2,7 @@
 
 import { chatService } from "@/src/common/service/chat-service";
 import { Box, Button, CircularProgress, Typography, Paper } from "@mui/material";
-import { GroupAdd, CheckCircle, ErrorOutline } from "@mui/icons-material";
+import { GroupAdd, CheckCircle, ErrorOutline, HourglassEmpty } from "@mui/icons-material";
 import { useRouter, useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -10,7 +10,7 @@ export default function JoinGroupPage() {
   const router = useRouter();
   const routeParams = useParams();
   const code = (routeParams?.code as string) || "";
-  const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
+  const [status, setStatus] = useState<"loading" | "success" | "pending" | "error">("loading");
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string>("");
 
@@ -22,6 +22,12 @@ export default function JoinGroupPage() {
         const payload =
           res?.payload?.data ?? res?.payload ?? res?.data;
         const cid = payload?.conversationId ?? res?.conversationId;
+        if (payload?.status === "PENDING_APPROVAL") {
+          setConversationId(cid ?? null);
+          setErrorMsg(payload?.message || "");
+          setStatus("pending");
+          return;
+        }
         if (cid) {
           setConversationId(cid);
           setStatus("success");
@@ -90,6 +96,36 @@ export default function JoinGroupPage() {
               }
             >
               Mở cuộc trò chuyện
+            </Button>
+          </>
+        )}
+
+        {status === "pending" && (
+          <>
+            <Box
+              sx={{
+                width: 64,
+                height: 64,
+                borderRadius: "50%",
+                bgcolor: "#FEF3C7",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                mx: "auto",
+                mb: 2,
+              }}
+            >
+              <HourglassEmpty sx={{ fontSize: 34, color: "#D97706" }} />
+            </Box>
+            <Typography variant="h6" fontWeight={600}>
+              Đã gửi yêu cầu tham gia
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1, mb: 3 }}>
+              {errorMsg ||
+                "Yêu cầu tham gia đã được gửi tới Quản trị viên nhóm. Vui lòng chờ phê duyệt."}
+            </Typography>
+            <Button variant="contained" fullWidth onClick={() => router.push("/me")}>
+              Về trang chủ
             </Button>
           </>
         )}

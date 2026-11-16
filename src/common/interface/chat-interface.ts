@@ -47,11 +47,17 @@ export interface ConversationDto {
       canCreatePolls?: boolean;
       canStartCall?: boolean;
       canSendMessage?: boolean;
+      canSendMedia?: boolean;
+      canPinMessage?: boolean;
+      canUpdateGroupInfo?: boolean;
     };
     policies?: {
       maxMembers?: number;
       inviteApproval?: boolean;
       messageRetention?: number;
+      allowJoinViaLink?: boolean;
+      allowViewPastMessages?: boolean;
+      hideMemberList?: boolean;
     };
     features?: {
       polls?: boolean;
@@ -60,6 +66,24 @@ export interface ConversationDto {
       reactions?: boolean;
     };
   };
+}
+
+export interface GroupJoinRequestDto {
+  id: string;
+  conversationId: string;
+  userId: string;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  source?: "LINK" | "INVITE";
+  createdAt: string | number;
+  displayName?: string;
+  username?: string | null;
+  avatarUrl?: string | null;
+}
+
+export interface GroupSettingsDto {
+  permissions: NonNullable<NonNullable<ConversationDto["settings"]>["permissions"]>;
+  policies: NonNullable<NonNullable<ConversationDto["settings"]>["policies"]>;
+  features: NonNullable<NonNullable<ConversationDto["settings"]>["features"]>;
 }
 export interface ConversationListMeta {
   total: number;
@@ -112,6 +136,8 @@ export enum SystemEventType {
   OWNER_TRANSFERRED = "OWNER_TRANSFERRED",
   GROUP_DISBANDED = "GROUP_DISBANDED",
   CONVERSATION_UPDATED = "CONVERSATION_UPDATED",
+  GROUP_SETTINGS_UPDATED = "GROUP_SETTINGS_UPDATED",
+  JOIN_REQUEST_CREATED = "JOIN_REQUEST_CREATED",
   CALL_LOG = "CALL_LOG",
 }
 

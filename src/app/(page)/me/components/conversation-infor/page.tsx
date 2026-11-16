@@ -6,7 +6,6 @@ import { styled } from "@mui/material/styles";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
-import LinkRoundedIcon from "@mui/icons-material/LinkRounded";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import { toast } from "react-toastify";
 
@@ -28,7 +27,6 @@ import SecuritySection from "./SecuritySection";
 import GroupMemberListView from "./GroupMemberListView";
 import AddMemberGroupDialog from "./AddMemberGroupDialog";
 import GroupSettingsDialog from "./GroupSettingsDialog";
-import InviteLinkModal from "./InviteLinkModal";
 import GroupBoardSection from "./GroupBoardSection";
 
 interface InfConvColumnProps {
@@ -95,7 +93,7 @@ export default function InfConvColumn({
   const [friends, setFriends] = useState<Array<{ id: string; name: string; avatar?: string; phone?: string }>>([]);
   const [memberSearch, setMemberSearch] = useState("");
   const [showGroupSettings, setShowGroupSettings] = useState(false);
-  const [showInviteLink, setShowInviteLink] = useState(false);
+  const [pendingJoinRequests, setPendingJoinRequests] = useState(0);
   const [pollsCount, setPollsCount] = useState(0);
 
   useEffect(() => {
@@ -104,18 +102,58 @@ export default function InfConvColumn({
 
   const listConversation = useChatStore((s) => s.listConversation);
   const activeConversationId = useChatStore((s) => s.activeConversationId);
+  const conversationDetail = useChatStore((s) =>
+    activeConversationId ? s.conversationDetailById?.[activeConversationId] : undefined
+  );
   const setActiveConversationId = useChatStore((s) => s.setActiveConversationId);
   const fetchListConversation = useChatStore((s) => s.fetchListConversation);
   const currentUserId = useChatStore((s) => s.currentUserId);
 
   const conversation = listConversation.find((c) => c.id === activeConversationId);
   const isGroup = conversation?.type === "group" || conversation?.type === "GROUP";
-  const members = conversation?.members ?? [];
+  const members = (conversationDetail?.members?.length
+    ? conversationDetail.members
+    : conversation?.members) ?? [];
 
+  const activeSettings = (conversationDetail as any)?.settings ?? conversation?.settings;
   const currentUserMember = members.find((m: any) => m.userId === currentUserId);
   const currentUserRole = (currentUserMember as any)?.role;
   const isOwner = currentUserRole === "OWNER";
   const isAdmin = currentUserRole === "OWNER" || currentUserRole === "ADMIN";
+  const canAddMembersPermission = !isGroup || isAdmin || activeSettings?.permissions?.canAddMembers !== false;
+  const canCreatePollsPermission = !isGroup || isAdmin || activeSettings?.permissions?.canCreatePolls !== false;
+
+  useEffect(() => {
+    if (!isGroup || !isAdmin || !activeConversationId) {
+      setPendingJoinRequests(0);
+      return;
+    }
+    let cancelled = false;
+    const loadPending = async () => {
+      try {
+        const res = await chatService.getJoinRequests(activeConversationId);
+        const data = (res as any)?.payload?.data ?? (res as any)?.data ?? res;
+        const list = Array.isArray(data) ? data : data?.data ?? [];
+        if (!cancelled) setPendingJoinRequests(Array.isArray(list) ? list.length : 0);
+      } catch {
+        if (!cancelled) setPendingJoinRequests(0);
+      }
+    };
+    loadPending();
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (!detail?.conversationId || detail.conversationId === activeConversationId) {
+        loadPending();
+      }
+    };
+    window.addEventListener("chat:join-request-created", handler);
+    window.addEventListener("chat:group-settings-updated", handler);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("chat:join-request-created", handler);
+      window.removeEventListener("chat:group-settings-updated", handler);
+    };
+  }, [isGroup, isAdmin, activeConversationId]);
 
   const mediaItems = useChatStore(
     (state) => state.mediaByConversation?.[conversationId] ?? EMPTY_ATTACHMENTS
@@ -234,9 +272,14 @@ export default function InfConvColumn({
   const handleAddMember = async (userId: string) => {
     const friend = friends.find((f) => f.id === userId);
     try {
-      await chatService.addMembers(conversationId, { memberIds: [userId] });
-      toast.success(`Đã thêm "${friend?.name || userId}" vào nhóm`);
+      const res: any = await chatService.addMembers(conversationId, { memberIds: [userId] });
+      const data = res?.payload?.data ?? res?.payload ?? res?.data ?? res;
       setFriends((prev) => prev.filter((f) => f.id !== userId));
+      if (data?.pendingApproval) {
+        toast.info(data?.message || `Đã gửi yêu cầu thêm "${friend?.name || userId}" chờ Quản trị viên duyệt`);
+      } else {
+        toast.success(`Đã thêm "${friend?.name || userId}" vào nhóm`);
+      }
       await refresh();
     } catch (error: any) {
       const message = error?.message || error?.response?.data?.message || "Không thể thêm thành viên";
@@ -326,7 +369,7 @@ export default function InfConvColumn({
         </IconButton>
       </Header>
 
-      <ProfileCard onAddMember={isGroup ? handleOpenAddMember : undefined} />
+      <ProfileCard onAddMember={isGroup && canAddMembersPermission ? handleOpenAddMember : undefined} />
       <OverviewCard />
 
       {isGroup && (
@@ -336,10 +379,10 @@ export default function InfConvColumn({
           notesCount={notesCount}
           remindersCount={remindersCount}
           todosCount={todosCount}
-          onOpenCreatePoll={handleOpenPoll}
-          onOpenCreateNote={handleOpenNote}
-          onOpenCreateReminder={handleOpenReminder}
-          onOpenCreateTodo={handleOpenTodo}
+          onOpenCreatePoll={canCreatePollsPermission ? handleOpenPoll : undefined}
+          onOpenCreateNote={canCreatePollsPermission ? handleOpenNote : undefined}
+          onOpenCreateReminder={canCreatePollsPermission ? handleOpenReminder : undefined}
+          onOpenCreateTodo={canCreatePollsPermission ? handleOpenTodo : undefined}
           onViewPinned={handleViewPinned}
           onViewPolls={handleViewPolls}
         />
@@ -443,7 +486,7 @@ export default function InfConvColumn({
       )}
 
       {isGroup && (
-        (conversation?.settings?.policies as any)?.hideMemberList && !isAdmin ? (
+        activeSettings?.policies?.hideMemberList && !isAdmin ? (
           <Box sx={{ p: 2, textAlign: "center", bgcolor: "#fff", m: 1, borderRadius: 2, border: "1px solid #E5E7EB" }}>
             <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 0.8 }}>
               <LockOutlinedIcon sx={{ fontSize: 16, color: "#64748B" }} />
@@ -475,7 +518,7 @@ export default function InfConvColumn({
         )
       )}
 
-      {isGroup && isAdmin && (
+      {isGroup && (
         <Box sx={{ px: 2, pb: 1 }}>
           <Box
             component="button"
@@ -501,36 +544,26 @@ export default function InfConvColumn({
           >
             <SettingsOutlinedIcon sx={{ fontSize: 18 }} />
             Quản trị & Cài đặt nhóm
-          </Box>
-        </Box>
-      )}
-
-      {isGroup && isAdmin && (
-        <Box sx={{ px: 2, pb: 1 }}>
-          <Box
-            component="button"
-            onClick={() => setShowInviteLink(true)}
-            sx={{
-              width: "100%",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 1,
-              py: 1,
-              px: 2,
-              borderRadius: "8px",
-              bgcolor: "#EFF6FF",
-              border: "1px solid #BFDBFE",
-              color: "#1D4ED8",
-              fontSize: 14,
-              fontWeight: 600,
-              cursor: "pointer",
-              transition: "all 0.2s",
-              "&:hover": { bgcolor: "#DBEAFE" },
-            }}
-          >
-            <LinkRoundedIcon sx={{ fontSize: 18 }} />
-            Mời vào nhóm bằng liên kết
+            {isAdmin && pendingJoinRequests > 0 && (
+              <Box
+                component="span"
+                sx={{
+                  minWidth: 18,
+                  height: 18,
+                  px: 0.6,
+                  borderRadius: 9,
+                  bgcolor: "#EF4444",
+                  color: "#fff",
+                  fontSize: 11,
+                  fontWeight: 700,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                {pendingJoinRequests}
+              </Box>
+            )}
           </Box>
         </Box>
       )}
@@ -541,14 +574,6 @@ export default function InfConvColumn({
           conversationId={conversationId || activeConversationId || conversation?.id || ""}
           onClose={() => setShowGroupSettings(false)}
           isAdmin={isAdmin}
-        />
-      )}
-
-      {isGroup && isAdmin && (
-        <InviteLinkModal
-          open={showInviteLink}
-          conversationId={conversationId || activeConversationId || conversation?.id || ""}
-          onClose={() => setShowInviteLink(false)}
         />
       )}
 

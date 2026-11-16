@@ -335,28 +335,27 @@ const Me = () => {
     return t("ME.CATEGORY_COUNT", { count: selectedCategories.length });
   };
 
-  useEffect(() => {
-    const accessToken = getSessionToken() || "";
-    const refreshToken = getRefreshToken() || "";
-    const currentUserId = getcurrentUserId() || "";
-    if (accessToken && currentUserId) {
-      initChat(accessToken, currentUserId);
-    }
-
-    return () => {
-      cleanupChat();
-    };
-  }, []);
-  useEffect(() => {
-    fetchAuthData()
-  }, [])
-
-  const accessToken = getSessionToken() ?? ""
+  const accessToken = getSessionToken() ?? "";
 
   const currentUserId =
     authData?.data?.user?.id ||
     getcurrentUserId() ||
     "";
+
+  useEffect(() => {
+    fetchAuthData();
+  }, []);
+
+  useEffect(() => {
+    if (!accessToken || !currentUserId) return;
+    initChat(accessToken, currentUserId);
+  }, [accessToken, currentUserId]);
+
+  useEffect(() => {
+    return () => {
+      cleanupChat();
+    };
+  }, []);
 
   const [mounted, setMounted] = useState(false);
   useEffect(() => {

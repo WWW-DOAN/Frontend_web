@@ -14,6 +14,7 @@ import { toast } from "react-toastify";
 
 // Registry for window event listeners so cleanupChat can remove them
 const _windowListeners: Array<{ event: string; handler: any }> = [];
+let _visibilityHandler: (() => void) | null = null;
 
 const _registerWindowListener = (event: string, handler: any) => {
   _windowListeners.push({ event, handler });
@@ -25,6 +26,10 @@ const _removeAllWindowListeners = () => {
     window.removeEventListener(event, handler);
   }
   _windowListeners.length = 0;
+  if (_visibilityHandler && typeof document !== "undefined") {
+    document.removeEventListener("visibilitychange", _visibilityHandler);
+    _visibilityHandler = null;
+  }
 };
 
 let _syncListTimer: ReturnType<typeof setTimeout> | null = null;
@@ -251,6 +256,9 @@ export const initChat = (accessToken: string, currentUserId: string) => {
 
   initCallUser();
   const state = useChatStore.getState();
+  if (state.currentUserId !== currentUserId) {
+    state.setCurrentUserId(currentUserId);
+  }
   const socket = connectSocket(accessToken, currentUserId);
 
   // Event cleanup is handled by window.removeEventListener in cleanupChat
@@ -381,6 +389,43 @@ export const initChat = (accessToken: string, currentUserId: string) => {
       case 'GROUP_DISBANDED':
         st.removeConversationLocally(conversationId);
         break;
+      case 'GROUP_SETTINGS_UPDATED': {
+        const nextSettings = (systemMessage.metadata as any)?.settings;
+        if (nextSettings) {
+          useChatStore.setState((state) => {
+            const detail = state.conversationDetailById[conversationId];
+            return {
+              listConversation: state.listConversation.map((cvs) =>
+                cvs.id === conversationId ? { ...cvs, settings: nextSettings } : cvs
+              ),
+              conversationDetailById: detail
+                ? {
+                    ...state.conversationDetailById,
+                    [conversationId]: { ...detail, settings: nextSettings },
+                  }
+                : state.conversationDetailById,
+            };
+          });
+        }
+        st.fetchConversationDetail(conversationId, true);
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(
+            new CustomEvent('chat:group-settings-updated', {
+              detail: { conversationId, settings: nextSettings },
+            })
+          );
+        }
+        break;
+      }
+      case 'JOIN_REQUEST_CREATED':
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(
+            new CustomEvent('chat:join-request-created', {
+              detail: { conversationId },
+            })
+          );
+        }
+        break;
     }
 
     fetchListConversation({ page: 1, limit: 20 });
@@ -469,49 +514,36 @@ export const initChat = (accessToken: string, currentUserId: string) => {
   // Removed legacy socket.on calls because stompClient does not support them.
   // Window event listeners below (chat:new, presence:update, etc.) should handle events now.
 
-  // Remove existing listeners to prevent duplicates
-  window.removeEventListener('chat:new', handleWindowIncomingMessage);
-  window.removeEventListener('presence:update', handlePresenceUpdate);
-  window.removeEventListener('socket:connect', handleSocketConnect);
-  window.removeEventListener('socket:error', handleSocketError);
-  window.removeEventListener('socket:disconnect', handleSocketDisconnect);
-  window.removeEventListener('chat:deleted', handleWindowDeletedMessage);
-  window.removeEventListener('chat:pinned', handleWindowPinnedMessage);
-  window.removeEventListener('chat:unpinned', handleWindowUnpinnedMessage);
-  window.removeEventListener('chat:system-message', handleWindowSystemMessage);
-  window.removeEventListener('chat:reaction', handleWindowReactionEvent);
-  window.removeEventListener('conversation:created', handleConversationCreated);
-  window.removeEventListener('conversation:removed', handleConversationRemoved);
-  window.removeEventListener('chat:typing', handleWindowTyping);
-  window.removeEventListener('chat:stop_typing', handleWindowStopTyping);
+  // Remove any previously registered listeners (including closures from an earlier initChat call)
+  _removeAllWindowListeners();
 
   // Add event listeners for STOMP events dispatched from socket.ts
-  window.addEventListener('chat:new', handleWindowIncomingMessage);
-  window.addEventListener('presence:update', handlePresenceUpdate);
-  window.addEventListener('socket:connect', handleSocketConnect);
-  window.addEventListener('socket:error', handleSocketError);
-  window.addEventListener('socket:disconnect', handleSocketDisconnect);
-  window.addEventListener('chat:deleted', handleWindowDeletedMessage);
-  window.addEventListener('chat:pinned', handleWindowPinnedMessage);
-  window.addEventListener('chat:unpinned', handleWindowUnpinnedMessage);
-  window.addEventListener('chat:system-message', handleWindowSystemMessage);
-  window.addEventListener('chat:reaction', handleWindowReactionEvent);
-  window.addEventListener('conversation:created', handleConversationCreated);
-  window.addEventListener('conversation:removed', handleConversationRemoved);
-  window.addEventListener('chat:typing', handleWindowTyping);
-  window.addEventListener('chat:stop_typing', handleWindowStopTyping);
+  _registerWindowListener('chat:new', handleWindowIncomingMessage);
+  _registerWindowListener('presence:update', handlePresenceUpdate);
+  _registerWindowListener('socket:connect', handleSocketConnect);
+  _registerWindowListener('socket:error', handleSocketError);
+  _registerWindowListener('socket:disconnect', handleSocketDisconnect);
+  _registerWindowListener('chat:deleted', handleWindowDeletedMessage);
+  _registerWindowListener('chat:pinned', handleWindowPinnedMessage);
+  _registerWindowListener('chat:unpinned', handleWindowUnpinnedMessage);
+  _registerWindowListener('chat:system-message', handleWindowSystemMessage);
+  _registerWindowListener('chat:reaction', handleWindowReactionEvent);
+  _registerWindowListener('conversation:created', handleConversationCreated);
+  _registerWindowListener('conversation:removed', handleConversationRemoved);
+  _registerWindowListener('chat:typing', handleWindowTyping);
+  _registerWindowListener('chat:stop_typing', handleWindowStopTyping);
 
   // Load initial online users & start sync
   syncOnlineUsers();
   if (_presenceSyncTimer) clearInterval(_presenceSyncTimer);
   _presenceSyncTimer = setInterval(syncOnlineUsers, 15000);
 
-  const handleVisibilityChange = () => {
+  _visibilityHandler = () => {
     if (!document.hidden) {
       syncOnlineUsers();
     }
   };
-  document.addEventListener('visibilitychange', handleVisibilityChange);
+  document.addEventListener('visibilitychange', _visibilityHandler);
 
   if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
     Notification.requestPermission().catch(() => {});

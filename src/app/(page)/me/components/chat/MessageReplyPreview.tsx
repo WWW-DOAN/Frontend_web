@@ -2,10 +2,12 @@
 
 import { Box, Typography } from "@mui/material";
 import { styled } from "@mui/material/styles";
-import { IMessageReplyPreview } from "@/src/common/interface/chat-interface";
+import { IMessageReplyPreview, UiMessage } from "@/src/common/interface/chat-interface";
 import { getReplyPreview } from "@/src/common/helpers/displayPreviewReply";
 import { useChatStore } from "@/src/common/store/useChatStore";
 import { useTrans } from "@/src/common/utilities/hook/trans";
+
+const EMPTY_MESSAGES: UiMessage[] = [];
 
 interface MessageReplyPreviewProps {
   replyTo?: IMessageReplyPreview | null;
@@ -61,7 +63,7 @@ export default function MessageReplyPreview({
   const t = useTrans();
   const conversationId = useChatStore((s) => s.activeConversationId);
   const messagesByConversation = useChatStore((s) =>
-    conversationId ? s.messagesByConversation[conversationId] ?? [] : []
+    conversationId ? s.messagesByConversation[conversationId] ?? EMPTY_MESSAGES : EMPTY_MESSAGES
   );
 
   if (!replyTo) return null;

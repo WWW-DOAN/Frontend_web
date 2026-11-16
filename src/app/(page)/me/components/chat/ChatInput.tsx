@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useCallback, useEffect, useMemo } from "react";
+import { toast } from "react-toastify";
 import {
   Box,
   IconButton,
@@ -63,6 +64,10 @@ const pulseRed = keyframes`
 
 interface ChatInputProps {
   disabled?: boolean;
+  /** Cho phép gửi ảnh/video/tệp (nhóm có thể tắt với thành viên thường) */
+  canSendMedia?: boolean;
+  /** Cho phép tạo bình chọn/ghi chú (nhóm có thể tắt với thành viên thường) */
+  canCreatePoll?: boolean;
   conversationId?: string;
   onSend: (value: string, attachments: ChatAttachmentPayload[]) => void;
   replyMessage?: {
@@ -225,6 +230,8 @@ const VoiceRecordingBar = styled(Box)({
 
 export default function ChatInput({
   disabled,
+  canSendMedia = true,
+  canCreatePoll = true,
   conversationId,
   onSend,
   replyMessage,
@@ -254,6 +261,8 @@ export default function ChatInput({
   const isOwnerOrAdmin = myMember?.role === "OWNER" || myMember?.role === "ADMIN";
   const canSendInGroup = conv?.settings?.permissions?.canSendMessage !== false;
   const isSendBlocked = isGroupConv && !isOwnerOrAdmin && !canSendInGroup;
+  const isMediaBlocked = isGroupConv && !isOwnerOrAdmin && canSendMedia === false;
+  const isPollBlocked = isGroupConv && !isOwnerOrAdmin && canCreatePoll === false;
 
   const authUser = useAuthStore((s) => s.authData?.data?.user);
   const currentUserName =
@@ -471,6 +480,10 @@ export default function ChatInput({
   const handleFiles = useCallback(
     async (files: FileList | File[]) => {
       if (!files.length || !currentUserId) return;
+      if (isGroupConv && !isOwnerOrAdmin && canSendMedia === false) {
+        toast.error("Chỉ Trưởng nhóm và Phó nhóm mới có quyền gửi hình ảnh, tập tin trong nhóm này");
+        return;
+      }
       setUploading(true);
       try {
         const uploaded = await Promise.all(
@@ -498,7 +511,7 @@ export default function ChatInput({
         setUploading(false);
       }
     },
-    [currentUserId]
+    [currentUserId, isGroupConv, isOwnerOrAdmin, canSendMedia]
   );
 
   // Clipboard Paste support (Ctrl+V screenshot images & files)
@@ -736,6 +749,10 @@ export default function ChatInput({
 
   // Voice recording handlers
   const startRecording = async () => {
+    if (isGroupConv && !isOwnerOrAdmin && canSendMedia === false) {
+      toast.error("Chỉ Trưởng nhóm và Phó nhóm mới có quyền gửi tin nhắn thoại trong nhóm này");
+      return;
+    }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       audioStreamRef.current = stream;
@@ -849,7 +866,7 @@ export default function ChatInput({
             fontWeight: 500,
           }}
         >
-          Chỉ quản trị viên mới có quyền gửi tin nhắn trong nhóm này.
+          Chỉ Trưởng nhóm và Phó nhóm mới có quyền gửi tin nhắn trong nhóm này.
         </Box>
       </ChatInputContainer>
     );
@@ -1151,20 +1168,38 @@ export default function ChatInput({
                   </IconBtn>
                 </Tooltip>
 
-                <Tooltip title="Ghi âm tin nhắn thoại" placement="top">
-                  <IconBtn onClick={startRecording} disabled={disabled || uploading}>
-                    <MicRoundedIcon fontSize="small" />
-                  </IconBtn>
+                <Tooltip
+                  title={
+                    isMediaBlocked
+                      ? "Chỉ Trưởng nhóm và Phó nhóm mới có quyền gửi tin nhắn thoại"
+                      : "Ghi âm tin nhắn thoại"
+                  }
+                  placement="top"
+                >
+                  <span>
+                    <IconBtn onClick={startRecording} disabled={disabled || uploading || isMediaBlocked}>
+                      <MicRoundedIcon fontSize="small" />
+                    </IconBtn>
+                  </span>
                 </Tooltip>
 
-                <Tooltip title={t("CHAT.SEND_IMAGE")} placement="top">
-                  <IconBtn
-                    onClick={() => imageInputRef.current?.click()}
-                    disabled={disabled || uploading}
-                    aria-label="send-image"
-                  >
-                    <ImageOutlinedIcon fontSize="small" />
-                  </IconBtn>
+                <Tooltip
+                  title={
+                    isMediaBlocked
+                      ? "Chỉ Trưởng nhóm và Phó nhóm mới có quyền gửi hình ảnh, tập tin"
+                      : t("CHAT.SEND_IMAGE")
+                  }
+                  placement="top"
+                >
+                  <span>
+                    <IconBtn
+                      onClick={() => imageInputRef.current?.click()}
+                      disabled={disabled || uploading || isMediaBlocked}
+                      aria-label="send-image"
+                    >
+                      <ImageOutlinedIcon fontSize="small" />
+                    </IconBtn>
+                  </span>
                 </Tooltip>
               </>
             )}
@@ -1221,6 +1256,7 @@ export default function ChatInput({
               </MenuItem>
               {isGroupConv && onOpenCreatePoll && (
                 <MenuItem
+                  disabled={isPollBlocked}
                   onClick={() => {
                     setUtilitiesAnchor(null);
                     onOpenCreatePoll();
@@ -1231,13 +1267,20 @@ export default function ChatInput({
                   </ListItemIcon>
                   <ListItemText
                     primary="Tạo bình chọn"
+                    secondary={
+                      isPollBlocked
+                        ? "Chỉ Trưởng nhóm và Phó nhóm mới có quyền tạo bình chọn"
+                        : undefined
+                    }
                     primaryTypographyProps={{ fontSize: 13, fontWeight: 500 }}
+                    secondaryTypographyProps={{ fontSize: 11 }}
                   />
                 </MenuItem>
               )}
 
               {isGroupConv && onOpenCreateReminder && (
                 <MenuItem
+                  disabled={isPollBlocked}
                   onClick={() => {
                     setUtilitiesAnchor(null);
                     onOpenCreateReminder();
@@ -1248,13 +1291,20 @@ export default function ChatInput({
                   </ListItemIcon>
                   <ListItemText
                     primary="Tạo nhắc hẹn"
+                    secondary={
+                      isPollBlocked
+                        ? "Chỉ Trưởng nhóm và Phó nhóm mới có quyền tạo nhắc hẹn"
+                        : undefined
+                    }
                     primaryTypographyProps={{ fontSize: 13, fontWeight: 500 }}
+                    secondaryTypographyProps={{ fontSize: 11 }}
                   />
                 </MenuItem>
               )}
 
               {isGroupConv && onOpenCreateNote && (
                 <MenuItem
+                  disabled={isPollBlocked}
                   onClick={() => {
                     setUtilitiesAnchor(null);
                     onOpenCreateNote();
@@ -1265,7 +1315,13 @@ export default function ChatInput({
                   </ListItemIcon>
                   <ListItemText
                     primary="Tạo ghi chú"
+                    secondary={
+                      isPollBlocked
+                        ? "Chỉ Trưởng nhóm và Phó nhóm mới có quyền tạo ghi chú"
+                        : undefined
+                    }
                     primaryTypographyProps={{ fontSize: 13, fontWeight: 500 }}
+                    secondaryTypographyProps={{ fontSize: 11 }}
                   />
                 </MenuItem>
               )}
@@ -1288,6 +1344,7 @@ export default function ChatInput({
               )}
 
               <MenuItem
+                disabled={isMediaBlocked}
                 onClick={() => {
                   setUtilitiesAnchor(null);
                   fileInputRef.current?.click();
@@ -1298,7 +1355,13 @@ export default function ChatInput({
                 </ListItemIcon>
                 <ListItemText
                   primary="Gửi tập tin"
+                  secondary={
+                    isMediaBlocked
+                      ? "Chỉ Trưởng nhóm và Phó nhóm mới có quyền gửi tập tin"
+                      : undefined
+                  }
                   primaryTypographyProps={{ fontSize: 13, fontWeight: 500 }}
+                  secondaryTypographyProps={{ fontSize: 11 }}
                 />
               </MenuItem>
 

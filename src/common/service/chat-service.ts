@@ -29,6 +29,8 @@ type RawConversation = {
   members?: RawConversationMember[];
   unreadCount?: number;
   isMuted?: boolean;
+  isPinned?: boolean;
+  settings?: ConversationDto["settings"];
   lastMessage?: any;
   lastMessageAt?: string | number | null;
   createdAt?: string | null;
@@ -86,11 +88,14 @@ const normalizeConversation = (item: RawConversation): ConversationDto => {
   return {
     id: item.id,
     name: conversationName,
+    title: item.title,
     avatarUrl: item.avatarUrl ?? null,
     type: (item.type || "DIRECT").toLowerCase(),
     memberCount,
     unreadCount: item.unreadCount ?? 0,
     isMuted: Boolean(item.isMuted),
+    isPinned: Boolean(item.isPinned),
+    settings: item.settings,
     lastMessage: item.lastMessage
       ? {
           id: item.lastMessage.id ?? "",
@@ -185,22 +190,28 @@ export interface MessageSearchParams {
 
 export interface UpdateGroupSettingsRequest {
   permissions?: {
-    canAddMembers: boolean;
-    canRemoveMembers: boolean;
-    canCreatePolls: boolean;
-    canStartCall: boolean;
-    canSendMessage: boolean;
+    canAddMembers?: boolean;
+    canRemoveMembers?: boolean;
+    canCreatePolls?: boolean;
+    canStartCall?: boolean;
+    canSendMessage?: boolean;
+    canSendMedia?: boolean;
+    canPinMessage?: boolean;
+    canUpdateGroupInfo?: boolean;
   };
   policies?: {
-    maxMembers: number;
-    inviteApproval: boolean;
-    messageRetention: number;
+    maxMembers?: number;
+    inviteApproval?: boolean;
+    messageRetention?: number;
+    allowJoinViaLink?: boolean;
+    allowViewPastMessages?: boolean;
+    hideMemberList?: boolean;
   };
   features?: {
-    polls: boolean;
-    calls: boolean;
-    fileSharing: boolean;
-    reactions: boolean;
+    polls?: boolean;
+    calls?: boolean;
+    fileSharing?: boolean;
+    reactions?: boolean;
   };
 }
 
@@ -425,27 +436,32 @@ export const chatService = {
     return http.patch(API.API_CONVERSATIONS_SETTINGS(conversationId), body);
   },
 
-  updateGroupSettings(conversationId: string, data: {
-    permissions?: {
-      canAddMembers?: boolean;
-      canRemoveMembers?: boolean;
-      canCreatePolls?: boolean;
-      canStartCall?: boolean;
-      canSendMessage?: boolean;
-    };
-    policies?: {
-      maxMembers?: number;
-      inviteApproval?: boolean;
-      messageRetention?: number;
-    };
-    features?: {
-      polls?: boolean;
-      calls?: boolean;
-      fileSharing?: boolean;
-      reactions?: boolean;
-    };
-  }) {
-    return http.patch(API.API_CONVERSATIONS_GROUP_SETTINGS(conversationId), data);
+  updateGroupSettings(conversationId: string, data: UpdateGroupSettingsRequest) {
+    return http.patch<IApiResponse<any>>(API.API_CONVERSATIONS_GROUP_SETTINGS(conversationId), data);
+  },
+
+  getGroupSettings(conversationId: string) {
+    return http.get<IApiResponse<{ conversationId: string; type: string; settings: Required<NonNullable<ConversationDto["settings"]>> }>>(
+      API.API_CONVERSATIONS_GROUP_SETTINGS(conversationId)
+    );
+  },
+
+  getJoinRequests(conversationId: string) {
+    return http.get<IApiResponse<{ data: any[] }>>(
+      API.API_GROUP_JOIN_REQUESTS(conversationId)
+    );
+  },
+
+  approveJoinRequest(conversationId: string, requestId: string) {
+    return http.post<IApiResponse<any>>(
+      API.API_GROUP_JOIN_REQUEST_APPROVE(conversationId, requestId)
+    );
+  },
+
+  rejectJoinRequest(conversationId: string, requestId: string) {
+    return http.post<IApiResponse<any>>(
+      API.API_GROUP_JOIN_REQUEST_REJECT(conversationId, requestId)
+    );
   },
 
   sendInvites(conversationId: string, body: SendInviteRequest | AddMembersRequest) {
@@ -519,7 +535,7 @@ export const chatService = {
   },
 
   joinGroupByCode(inviteCode: string) {
-    return http.post<IApiResponse<{ conversationId: string }>>(
+    return http.post<IApiResponse<{ conversationId: string; status?: string; message?: string }>>(
       API.API_JOIN_GROUP_BY_CODE(inviteCode)
     );
   },

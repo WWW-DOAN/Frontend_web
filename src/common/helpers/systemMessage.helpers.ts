@@ -85,6 +85,20 @@ export const buildSystemMessageText = (message: UiMessage) => {
             return `${actor} đã cập nhật thông tin nhóm`;
         }
 
+        case SystemEventType.GROUP_SETTINGS_UPDATED: {
+            const data = message.metadata as Record<string, any>;
+            const actor = data?.updated_by_name || "Ai đó";
+
+            return `${actor} đã cập nhật cài đặt nhóm`;
+        }
+
+        case SystemEventType.JOIN_REQUEST_CREATED: {
+            const data = message.metadata as Record<string, any>;
+            const name = data?.user_name || "Một người dùng";
+
+            return `${name} đã yêu cầu tham gia nhóm`;
+        }
+
         case SystemEventType.CALL_LOG: {
             const metadata = message.metadata as Record<string, unknown>;
             const callType = metadata?.callType === "VIDEO" ? "video" : "thoại";

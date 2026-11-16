@@ -80,6 +80,12 @@ export const API = {
         `/api/conversations/${conversationId}/group-settings`,
     API_CONVERSATIONS_DISBAND: (conversationId: string) =>
         `/api/conversations/${conversationId}/disband`,
+    API_GROUP_JOIN_REQUESTS: (conversationId: string) =>
+        `/api/conversations/${conversationId}/join-requests`,
+    API_GROUP_JOIN_REQUEST_APPROVE: (conversationId: string, requestId: string) =>
+        `/api/conversations/${conversationId}/join-requests/${requestId}/approve`,
+    API_GROUP_JOIN_REQUEST_REJECT: (conversationId: string, requestId: string) =>
+        `/api/conversations/${conversationId}/join-requests/${requestId}/reject`,
     
     // Invitation Management
     API_CONVERSATIONS_INVITES_SEND: (conversationId: string) =>

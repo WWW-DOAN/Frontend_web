@@ -136,8 +136,30 @@ export default function ChatPanel({
     () => listConversation.find((c) => c.id === conversationId),
     [listConversation, conversationId]
   );
+  const conversationDetail = useChatStore(
+    (s) => s.conversationDetailById?.[conversationId]
+  );
   const isGroup = conversation?.type === "group" || conversation?.type === "GROUP";
   const members = (conversation?.members || []) as any[];
+
+  const groupPermissions = useMemo(() => {
+    const fromDetail = conversationDetail?.settings ?? conversation?.settings;
+    return fromDetail?.permissions ?? {};
+  }, [conversationDetail?.settings, conversation?.settings]);
+
+  const isGroupAdmin = useMemo(() => {
+    const memberList = (conversationDetail?.members?.length
+      ? conversationDetail.members
+      : members) as any[];
+    const me = memberList.find(
+      (m: any) => (m.userId || m.id) === currentUserId
+    );
+    return me?.role === "OWNER" || me?.role === "ADMIN";
+  }, [conversationDetail, members, currentUserId]);
+
+  const canSend = !isGroup || isGroupAdmin || groupPermissions.canSendMessage !== false;
+  const canSendMedia = !isGroup || isGroupAdmin || groupPermissions.canSendMedia !== false;
+  const canCreatePoll = !isGroup || isGroupAdmin || groupPermissions.canCreatePolls !== false;
 
   const fetchPolls = useCallback(async () => {
     if (!conversationId) return;
@@ -513,7 +535,9 @@ export default function ChatPanel({
 
       <InputWrap>
         <ChatInput
-          disabled={false}
+          disabled={!canSend}
+          canSendMedia={canSendMedia}
+          canCreatePoll={canCreatePoll}
           conversationId={conversationId}
           isGroup={isGroup}
           onOpenCreatePoll={() => setShowCreatePollModal(true)}
