@@ -471,7 +471,7 @@ const VoicePlayer: React.FC<{ url: string; isOwn?: boolean; initialDuration?: nu
         if (!isCancelled && decoded && Number.isFinite(decoded.duration) && decoded.duration > 0) {
           setDuration(decoded.duration);
         }
-        ctx.close().catch(() => {});
+        ctx.close().catch(() => { });
       } catch {
         // Ignore and fallback to HTMLAudioElement loadedmetadata
       }
@@ -697,8 +697,8 @@ const renderMessageTextWithMentions = (text: string, memberNames: string[] = [])
             bgcolor: isZai
               ? "rgba(124, 58, 237, 0.12)"
               : isAll
-              ? "rgba(217, 119, 6, 0.1)"
-              : "rgba(0, 90, 224, 0.08)",
+                ? "rgba(217, 119, 6, 0.1)"
+                : "rgba(0, 90, 224, 0.08)",
             px: 0.6,
             py: 0.1,
             borderRadius: 1,
@@ -1194,17 +1194,17 @@ const MessageItem: React.FC<MessageItemProps> = ({
                         {replyTo.isDeleted
                           ? t("CHAT.MESSAGE_DELETED")
                           : replyText || (imageAttachment
-                              ? imageCount > 1
-                                ? t("CHAT.IMAGES_COUNT", { count: imageCount })
-                                : t("CHAT.IMAGE")
-                              : videoAttachment
+                            ? imageCount > 1
+                              ? t("CHAT.IMAGES_COUNT", { count: imageCount })
+                              : t("CHAT.IMAGE")
+                            : videoAttachment
                               ? t("CHAT.VIDEO")
                               : fileCount > 1
-                              ? t("CHAT.FILES_COUNT", { count: fileCount })
-                              : fileCount === 1
-                              ? t("CHAT.FILE_ATTACHMENT")
-                              : t("CHAT.MESSAGE")
-                            )
+                                ? t("CHAT.FILES_COUNT", { count: fileCount })
+                                : fileCount === 1
+                                  ? t("CHAT.FILE_ATTACHMENT")
+                                  : t("CHAT.MESSAGE")
+                          )
                         }
                       </ReplyContent>
                     </Box>
@@ -1413,8 +1413,8 @@ const MessageItem: React.FC<MessageItemProps> = ({
                         onClick={() =>
                           onImageClick?.(
                             att.url ||
-                              att.thumbnailUrl ||
-                              "",
+                            att.thumbnailUrl ||
+                            "",
                             mediaAttachments,
                             index
                           )
@@ -1513,7 +1513,7 @@ const MessageItem: React.FC<MessageItemProps> = ({
                         const contentType = (att.contentType || att.content_type || "").toLowerCase();
                         const isVideo = att.type?.toLowerCase() === 'video' || contentType.startsWith('video/');
                         const isImage = att.type?.toLowerCase() === 'image' || contentType.startsWith('image/');
-                        
+
                         onImageClick?.(fileUrl || "", [{
                           key: att.key || fileUrl || "",
                           name: att.name || "file",
@@ -1606,7 +1606,7 @@ const MessageItem: React.FC<MessageItemProps> = ({
                     const lng = meta.lng ?? att.name?.split(",")[1];
                     const address = meta.address || att.name || "Vị trí";
                     const mapsUrl = `https://www.google.com/maps?q=${lat},${lng}`;
-                    const osmEmbedUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${Number(lng)-0.005},${Number(lat)-0.005},${Number(lng)+0.005},${Number(lat)+0.005}&layer=mapnik&marker=${lat},${lng}`;
+                    const osmEmbedUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${Number(lng) - 0.005},${Number(lat) - 0.005},${Number(lng) + 0.005},${Number(lat) + 0.005}&layer=mapnik&marker=${lat},${lng}`;
                     return (
                       <Box
                         key={att.key || index}

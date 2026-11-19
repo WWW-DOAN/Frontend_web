@@ -209,8 +209,8 @@ export const fetchListConversation = async (params: { page?: number; limit?: num
     const items = Array.isArray(payload?.data)
       ? payload.data
       : Array.isArray(payload?.conversations)
-      ? payload.conversations
-      : [];
+        ? payload.conversations
+        : [];
     const meta = payload?.meta ?? null;
 
     const activeId = (useChatStore.getState().activeConversationId || "").trim().toLowerCase();
@@ -416,9 +416,9 @@ export const initChat = (accessToken: string, currentUserId: string) => {
               ),
               conversationDetailById: detail
                 ? {
-                    ...state.conversationDetailById,
-                    [conversationId]: { ...detail, settings: nextSettings },
-                  }
+                  ...state.conversationDetailById,
+                  [conversationId]: { ...detail, settings: nextSettings },
+                }
                 : state.conversationDetailById,
             };
           });
@@ -459,7 +459,7 @@ export const initChat = (accessToken: string, currentUserId: string) => {
     // Update message in local state if loaded
     const messages = state.messagesByConversation[conversationId] || [];
     const messageExists = messages.some((msg) => msg.messageId === messageId);
-    
+
     if (messageExists) {
       state.addPinnedMessage(conversationId, messageId);
       state.updateMessage(conversationId, messageId, {
@@ -483,7 +483,7 @@ export const initChat = (accessToken: string, currentUserId: string) => {
     const messageExists = messages.some((msg) => msg.messageId === messageId);
 
     state.removePinnedMessage(conversationId, messageId);
-    
+
     if (messageExists) {
       state.updateMessage(conversationId, messageId, {
         isPinned: false,
@@ -562,7 +562,7 @@ export const initChat = (accessToken: string, currentUserId: string) => {
   document.addEventListener('visibilitychange', _visibilityHandler);
 
   if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
-    Notification.requestPermission().catch(() => {});
+    Notification.requestPermission().catch(() => { });
   }
 
   state.setInitialized(true);
@@ -581,7 +581,7 @@ export const openConversation = async (conversationId: string) => {
     ),
   }));
 
-  chatService.markConversationAsRead(conversationId).catch(() => {});
+  chatService.markConversationAsRead(conversationId).catch(() => { });
 
   subscribeToConversation(conversationId);
   if (socket?.connected) {
@@ -597,7 +597,7 @@ export const openConversation = async (conversationId: string) => {
     const res = await chatService.fetchMessages(conversationId, { limit: 50 });
     const payloadData = (res?.payload as any)?.data;
     const messages = Array.isArray(payloadData?.items) ? payloadData.items : (Array.isArray(payloadData) ? payloadData : []);
-    
+
     const normalizedItems = dedupeByMessageId(messages.map(normalizeMessage));
     const hydratedItems = hydrateReplyMessages(normalizedItems);
 
@@ -745,19 +745,19 @@ export const sendMessageHttp = async (
     failed: false,
     replyTo: replyMessage
       ? {
-          messageId: replyMessage.messageId,
-          senderId: replyMessage.senderId,
-          body: replyMessage.body ?? "",
-          attachments: replyMessage.attachments ?? [],
-          isDeleted: Boolean(replyMessage.isDeleted),
-        }
+        messageId: replyMessage.messageId,
+        senderId: replyMessage.senderId,
+        body: replyMessage.body ?? "",
+        attachments: replyMessage.attachments ?? [],
+        isDeleted: Boolean(replyMessage.isDeleted),
+      }
       : null,
     replyToMessageId: replyMessage?.messageId ?? null,
   });
 
   state.appendRealtimeMessage(conversationId, optimisticMessage);
   appendMessageDerivedData(optimisticMessage);
-  
+
   if (/@zai\b/i.test(displayBody)) {
     addTypingUser(conversationId, {
       userId: "00000000-0000-0000-0000-000000000001",
@@ -766,11 +766,11 @@ export const sendMessageHttp = async (
       avatarUrl: "https://res.cloudinary.com/dokskn4kz/image/upload/v1794724426/zalo-chat/zai_bot_avatar.png",
     });
   }
-  
+
   // Send via HTTP API
   try {
     const response = await chatService.sendMessage(conversationId, displayBody, 'TEXT', attachments, replyMessage?.messageId ?? null, clientMessageId);
-    
+
     if (response.ok && response.payload) {
       // Success - Update optimistic message with server data
       const serverMessage = normalizeMessage(response.payload);
@@ -813,10 +813,10 @@ export const sendMessageHttp = async (
           },
         });
       }
-      
+
       // Refresh conversation list to ensure UI updates when using HTTP API fallback
       await state.fetchListConversation({ page: 1, limit: 20 });
-      
+
       return serverMessage;
     } else {
       const errorMessage =
@@ -879,11 +879,11 @@ export const deleteMessage = async (
         const updatedMessages = msgs.map((msg) =>
           msg.messageId === messageId
             ? {
-                ...msg,
-                isDeleted: true,
-                deletedAt,
-                failed: false,
-              }
+              ...msg,
+              isDeleted: true,
+              deletedAt,
+              failed: false,
+            }
             : msg
         );
 
@@ -938,7 +938,7 @@ export const pinMessage = async (conversationId: string, messageId: string, crea
   try {
     const state = useChatStore.getState();
     const pinned = state.pinnedMessagesByConversation[conversationId] || [];
-    
+
     if (pinned.some((m: any) => m.messageId === messageId)) {
       console.warn("[pinMessage] Message already pinned");
       return { ok: true, payload: {} };
@@ -978,11 +978,11 @@ export const pinMessage = async (conversationId: string, messageId: string, crea
 export const unpinMessage = async (conversationId: string, messageId: string, createdAt: number) => {
   try {
     console.log("[unpinMessage] Called:", { conversationId, messageId, createdAt });
-    
+
     const ts = typeof createdAt === 'number' ? createdAt : Date.now();
     const res = await chatService.unpinMessage(conversationId, ts, messageId);
     console.log("[unpinMessage] Response:", res);
-    
+
     if (res?.ok) {
       const state = useChatStore.getState();
       const pinned = state.pinnedMessagesByConversation[conversationId] || [];
@@ -1296,70 +1296,70 @@ export const cleanupChat = () => {
 };
 
 // Event handlers for window events
-  const handleWindowReactionEvent = (event: any) => {
-    handleReactionEvent(event.detail);
-  };
+const handleWindowReactionEvent = (event: any) => {
+  handleReactionEvent(event.detail);
+};
 
-  const handleWindowTyping = (event: any) => {
-    const data = event.detail;
-    const conversationId = data?.conversationId || data?.conversation_id;
-    const userId = data?.userId || data?.user_id;
-    let displayName = data?.displayName || data?.display_name;
+const handleWindowTyping = (event: any) => {
+  const data = event.detail;
+  const conversationId = data?.conversationId || data?.conversation_id;
+  const userId = data?.userId || data?.user_id;
+  let displayName = data?.displayName || data?.display_name;
 
-    if (!conversationId || !userId) return;
+  if (!conversationId || !userId) return;
 
-    const state = useChatStore.getState();
-    const currentUserId = (state.currentUserId || "").trim().toLowerCase();
-    if (userId.trim().toLowerCase() === currentUserId) return;
+  const state = useChatStore.getState();
+  const currentUserId = (state.currentUserId || "").trim().toLowerCase();
+  if (userId.trim().toLowerCase() === currentUserId) return;
 
-    const isBot =
-      userId === "00000000-0000-0000-0000-000000000001" ||
-      (displayName && displayName.toLowerCase().includes("zai"));
+  const isBot =
+    userId === "00000000-0000-0000-0000-000000000001" ||
+    (displayName && displayName.toLowerCase().includes("zai"));
 
-    if (isBot) {
-      displayName = "ZAi";
-    }
+  if (isBot) {
+    displayName = "ZAi";
+  }
 
-    const conversation = state.listConversation.find(
-      (c) => (c.id || "").toLowerCase() === conversationId.toLowerCase()
-    );
-    const member = conversation?.members?.find(
-      (m: any) => (m.userId || m.id || m.user_id)?.toLowerCase() === userId.toLowerCase()
-    );
+  const conversation = state.listConversation.find(
+    (c) => (c.id || "").toLowerCase() === conversationId.toLowerCase()
+  );
+  const member = conversation?.members?.find(
+    (m: any) => (m.userId || m.id || m.user_id)?.toLowerCase() === userId.toLowerCase()
+  );
 
-    const resolvedName =
-      displayName ||
-      member?.displayName ||
-      member?.fullName ||
-      member?.username ||
-      (isBot ? "ZAi" : "Thành viên");
+  const resolvedName =
+    displayName ||
+    member?.displayName ||
+    member?.fullName ||
+    member?.username ||
+    (isBot ? "ZAi" : "Thành viên");
 
-    const resolvedAvatar =
-      isBot
-        ? "https://res.cloudinary.com/dokskn4kz/image/upload/v1794724426/zalo-chat/zai_bot_avatar.png"
-        : member?.avatarUrl;
+  const resolvedAvatar =
+    isBot
+      ? "https://res.cloudinary.com/dokskn4kz/image/upload/v1794724426/zalo-chat/zai_bot_avatar.png"
+      : member?.avatarUrl;
 
-    addTypingUser(conversationId, {
-      userId,
-      displayName: resolvedName,
-      avatarUrl: resolvedAvatar || undefined,
-      isBot,
-    });
-  };
+  addTypingUser(conversationId, {
+    userId,
+    displayName: resolvedName,
+    avatarUrl: resolvedAvatar || undefined,
+    isBot,
+  });
+};
 
-  const handleWindowStopTyping = (event: any) => {
-    const data = event.detail;
-    const conversationId = data?.conversationId || data?.conversation_id;
-    const userId = data?.userId || data?.user_id;
-    if (!conversationId || !userId) return;
+const handleWindowStopTyping = (event: any) => {
+  const data = event.detail;
+  const conversationId = data?.conversationId || data?.conversation_id;
+  const userId = data?.userId || data?.user_id;
+  if (!conversationId || !userId) return;
 
-    removeTypingUser(conversationId, userId);
-  };
+  removeTypingUser(conversationId, userId);
+};
 
-  const handleWindowIncomingMessage = (event: any) => {
+const handleWindowIncomingMessage = (event: any) => {
   console.log('Window event - chat:new:', event.detail);
   const normalized = normalizeMessage(event.detail);
-  
+
   if (!normalized.conversationId || !normalized.messageId) return;
 
   // Clear typing state for sender and bot
@@ -1451,17 +1451,17 @@ export const cleanupChat = () => {
         }
       }
     }
-    
+
     if (!conversationExists) {
       setTimeout(() => fetchListConversation({ page: 1, limit: 20 }), 0);
     }
 
     let nextConversations = conversationExists
       ? moveConversationToTopWithLastMessage(
-          state.listConversation,
-          normalized.conversationId,
-          msg
-        )
+        state.listConversation,
+        normalized.conversationId,
+        msg
+      )
       : state.listConversation;
 
     nextConversations = nextConversations.map((conversation) => {
@@ -1479,7 +1479,7 @@ export const cleanupChat = () => {
     });
 
     if (isActiveConversation && !isOwnMessage) {
-      chatService.markConversationAsRead(normalized.conversationId).catch(() => {});
+      chatService.markConversationAsRead(normalized.conversationId).catch(() => { });
     }
     if (!isActiveConversation && !isOwnMessage) {
       _scheduleListSync();
