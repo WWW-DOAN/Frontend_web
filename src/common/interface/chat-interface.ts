@@ -9,11 +9,11 @@ export interface ReactionDto {
 type MessageMap = Record<string, UiMessage[]>;
 type PaginationMap = Record<string, PaginationState>;
 export interface ConversationLastMessageDto {
-    id: string;
-    content: string;
-    createdAt: string | number | null;
-    senderId: string;
-    senderName: string;
+  id: string;
+  content: string;
+  createdAt: string | number | null;
+  senderId: string;
+  senderName: string;
 }
 export interface ConversationMemberDto {
   userId: string;
@@ -30,13 +30,13 @@ export interface ConversationDto {
   name: string;
   title?: string;
   avatarUrl?: string | null;
-  type:  string;
+  type: string;
   memberCount?: number;
   unreadCount: number;
   isMuted?: boolean;
   isPinned?: boolean;
   pinnedAt?: string | number | null;
-  lastMessage?: ConversationLastMessageDto | null ;
+  lastMessage?: ConversationLastMessageDto | null;
   lastMessageAt?: string | number | null;
   createdAt?: string | null;
   members?: ConversationMemberDto[];
@@ -126,7 +126,7 @@ export interface MessageReplyPreview {
   isDeleted?: boolean;
 }
 
-export interface IMessageReplyPreview extends MessageReplyPreview {}
+export interface IMessageReplyPreview extends MessageReplyPreview { }
 
 export enum SystemEventType {
   MEMBER_ADDED = "MEMBER_ADDED",
@@ -232,7 +232,7 @@ export interface IChat {
   conversationMeta: ConversationListMeta | null;
   conversationLoading: boolean;
 
-    mediaByConversation: Record<string, AttachmentDto[]>;
+  mediaByConversation: Record<string, AttachmentDto[]>;
   filesByConversation: Record<string, AttachmentDto[]>;
   linksByConversation: Record<string, string[]>;
 

@@ -422,7 +422,7 @@ export default function PollItem({
             )}
           </>
         )}
-        
+
         {poll.expiresAt && (
           <Typography variant="caption" color="#6B7280">
             Hết hạn: {new Date(poll.expiresAt).toLocaleString()}
