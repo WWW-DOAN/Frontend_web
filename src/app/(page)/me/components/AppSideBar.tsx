@@ -34,13 +34,14 @@ import { resolveMediaUrl } from "@/src/common/helpers/displayMedia.helpers";
 import { DEFAULT_AVATAR_URL } from "@/src/shared/component/Avatar";
 
 const Sidebar = styled(Box)({
+  width: 64,
   minWidth: 64,
   height: "100vh",
   backgroundColor: "#0068ff",
   display: "flex",
   flexDirection: "column",
   alignItems: "center",
-  padding: "0px 8px",
+  padding: "0px 6px",
 });
 
 const AvatarStyled = styled(Avatar)({
@@ -216,7 +217,7 @@ const AppSidebarContent: React.FC<AppSidebarProps> = ({
     <>
       <Box component="aside" data-testid="app-sidebar" sx={{ width: 64, minWidth: 64, maxWidth: 64, flexShrink: 0, height: "100vh" }}>
         <Sidebar>
-          <Box mt="32px">
+          <Box mt="24px" sx={{ width: "100%", display: "flex", justifyContent: "center" }}>
             <AvatarStyled
               src={avatarSrc || undefined}
               onClick={(e) => {
@@ -238,8 +239,8 @@ const AppSidebarContent: React.FC<AppSidebarProps> = ({
             onClose={() => setOpenLanguageModal(false)}
           />
 
-          <Stack justifyContent="space-between" height="100%">
-            <Stack mt={2} spacing={1.25} alignItems="center">
+          <Stack width="100%" alignItems="center" justifyContent="space-between" height="100%">
+            <Stack mt={2} spacing={1.25} alignItems="center" width="100%">
               <BoxIcon
                 outlined={ChatOutlinedIcon}
                 filled={ChatIcon}
@@ -269,7 +270,7 @@ const AppSidebarContent: React.FC<AppSidebarProps> = ({
               />
             </Stack>
 
-            <Stack mb={2} spacing={1.25} alignItems="center">
+            <Stack mb={2} spacing={1.25} alignItems="center" width="100%">
               <BoxIcon
                 outlined={BusinessCenterOutlinedIcon}
                 filled={BusinessCenterIcon}
