@@ -7,6 +7,7 @@ import { ChatAttachmentPayload, IUploadedMedia } from "../interface/media-interf
 import { chatService } from "../service/chat-service";
 import { connectSocket, disconnectSocket, getSocket, sendSocketMessage, subscribeToConversation, unsubscribeFromConversation } from "../socket/socket";
 import { initCallUser } from "./call.action";
+import { useAuthStore } from "../store/useAuthStore";
 import { useChatStore } from "../store/useChatStore";
 import { usePresenceStore } from "../store/usePresenceStore";
 import http from "../api/http";
@@ -802,6 +803,19 @@ export const sendMessageHttp = async (
       // Update conversation list with last message info
       const conversation = state.listConversation.find(c => c.id === conversationId);
       if (conversation) {
+        const senderMember = conversation.members?.find(
+          (member) => member.userId === serverMessage.senderId
+        );
+        const authUser = useAuthStore.getState().authData?.data?.user;
+        const senderName =
+          senderMember?.displayName ||
+          senderMember?.username ||
+          (authUser?.id === serverMessage.senderId
+            ? authUser.displayName || authUser.fullName || authUser.username
+            : undefined) ||
+          serverMessage.senderName ||
+          "Tôi";
+
         state.upsertConversationToTop({
           ...conversation,
           lastMessage: {
@@ -809,7 +823,7 @@ export const sendMessageHttp = async (
             content: serverMessage.body,
             createdAt: serverMessage.createdAt,
             senderId: serverMessage.senderId,
-            senderName: "You", // TODO: Get actual sender name
+            senderName,
           },
         });
       }
