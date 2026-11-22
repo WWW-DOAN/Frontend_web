@@ -1,7 +1,7 @@
 import { useAuthStore } from "../store/useAuthStore";
 import { useChatStore } from "../store/useChatStore";
 import { userService } from "../service/user-service";
-import { getRefreshToken, getSessionToken } from "../utilities/utils";
+import { clearAuthStorage, getRefreshToken, getSessionToken, redirectToLogin } from "../utilities/utils";
 
 /**
  * FETCH AUTH DATA từ server
@@ -13,6 +13,13 @@ export const fetchAuthData = async () => {
         authStore.setLoadingAuth(true);
         authStore.setErrorAuth(null);
         const userData = await userService.userGetMe();
+        // Token hết hạn / không hợp lệ → đăng xuất và về trang đăng nhập
+        if (userData?.statusCode === 401) {
+          clearAuthStorage();
+          useAuthStore.getState().resetAuth();
+          redirectToLogin();
+          return;
+        }
         // Backend returns raw user object directly (not wrapped in { data: {...} })
         const rawPayload = userData?.payload as any;
         const user = rawPayload?.data ?? rawPayload ?? null;

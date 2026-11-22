@@ -36,7 +36,7 @@ import { useAuthStore } from "@/src/common/store/useAuthStore";
 import ChatPanel from "./components/chat/ChatPanel";
 import ConversationList from "./components/chat/ConversationList";
 import { useChatStore } from "@/src/common/store/useChatStore";
-import { getcurrentUserId, getRefreshToken, getSessionToken } from "@/src/common/utilities/utils";
+import { clearAuthStorage, getcurrentUserId, getRefreshToken, getSessionToken, redirectToLogin } from "@/src/common/utilities/utils";
 import InfConvColumn from "./components/conversation-infor/page";
 import SearchSidebar from "./components/chat/SearchSidebar";
 import ContactFunctionList, { ContactView } from "./components/friend/ContactFunctionList";
@@ -357,8 +357,16 @@ const Me = () => {
   }, []);
 
   const [mounted, setMounted] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   useEffect(() => {
     setMounted(true);
+    const token = getSessionToken();
+    if (!token) {
+      clearAuthStorage();
+      redirectToLogin();
+      return;
+    }
+    setIsAuthenticated(true);
   }, []);
 
   // AI Agent Event Listener for tab switching
@@ -385,7 +393,8 @@ const Me = () => {
     },
   });
 
-  if (!mounted) {
+  // Chặn render giao diện bảo mật khi chưa đăng nhập (chuyển hướng ở useEffect)
+  if (!mounted || !isAuthenticated) {
     return null;
   }
 
