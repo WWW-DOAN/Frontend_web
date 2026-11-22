@@ -58,8 +58,8 @@ import { useTrans } from "@/src/common/utilities/hook/trans";
 /* ===================== styled ===================== */
 
 const Root = styled(Box)(() => ({
-  height: "100vh",
-  width: "100vw",
+  height: "100dvh",
+  width: "100%",
   display: "flex",
   flexDirection: "row",
   overflow: "hidden",
@@ -80,7 +80,7 @@ const ConversationColumn = styled(Box)(() => ({
 const ChatColumn = styled(Box)(() => ({
   flex: 1,
   minWidth: 0,
-  height: "100vh",
+  height: "100dvh",
   display: "flex",
   flexDirection: "column",
   overflow: "hidden",
@@ -205,8 +205,8 @@ const CancelIconStyled = styled(CancelIcon)(() => ({
 }));
 
 const MobileLayout = styled(Box)({
-  height: "100vh",
-  width: "100vw",
+  height: "100dvh",
+  width: "100%",
   display: "flex",
   flexDirection: "column",
   overflow: "hidden",

@@ -34,13 +34,13 @@ import { resolveMediaUrl } from "@/src/common/helpers/displayMedia.helpers";
 import { DEFAULT_AVATAR_URL } from "@/src/shared/component/Avatar";
 
 const Sidebar = styled(Box)({
-  minWidth: 56,
+  minWidth: 64,
   height: "100vh",
-  backgroundColor: "#005ae0",
+  backgroundColor: "#0068ff",
   display: "flex",
   flexDirection: "column",
   alignItems: "center",
-  padding: "0px 4px",
+  padding: "0px 8px",
 });
 
 const AvatarStyled = styled(Avatar)({
@@ -214,7 +214,7 @@ const AppSidebarContent: React.FC<AppSidebarProps> = ({
 
   return (
     <>
-      <Box component="aside" data-testid="app-sidebar" sx={{ width: 56, minWidth: 56, maxWidth: 56, flexShrink: 0, height: "100vh" }}>
+      <Box component="aside" data-testid="app-sidebar" sx={{ width: 64, minWidth: 64, maxWidth: 64, flexShrink: 0, height: "100vh" }}>
         <Sidebar>
           <Box mt="32px">
             <AvatarStyled

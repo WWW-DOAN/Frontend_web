@@ -26,17 +26,18 @@ const Item = styled(Box, {
   shouldForwardProp: (prop) => prop !== "active",
 })<{ active?: boolean }>(({ active }) => ({
   position: "relative",
-  padding: "12px 16px",
+  padding: "11px 14px",
   display: "flex",
   alignItems: "center",
   justifyContent: "space-between",
   gap: 12,
   cursor: "pointer",
-  borderRadius: "6px",
-  background: active ? "#E5F1FF" : "#fff",
+  borderRadius: "8px",
+  marginBottom: 2,
+  background: active ? "#eaf3ff" : "#fff",
   transition: "background 0.2s ease",
   "&:hover": {
-    background: active ? "#E5F1FF" : "#F1F2F4",
+    background: active ? "#eaf3ff" : "#f4f6f8",
   },
 }));
 
@@ -84,7 +85,7 @@ const Name = styled(Typography, {
 })<{ isGroup?: boolean }>(({ isGroup }: { isGroup?: boolean }) => ({
   fontSize: 14,
   fontWeight: isGroup ? 500 : 600,
-  color: isGroup ? "#1565C0" : "#111827",
+  color: "#252a31",
   whiteSpace: "nowrap",
   overflow: "hidden",
   textOverflow: "ellipsis",
@@ -93,7 +94,7 @@ const Name = styled(Typography, {
 
 const LastMessage = styled(Typography)({
   fontSize: 12,
-  color: "#6B7280",
+  color: "#737e8a",
   marginTop: 4,
   whiteSpace: "nowrap",
   overflow: "hidden",
@@ -104,7 +105,7 @@ const UnreadCountBadge = styled(Box)({
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  backgroundColor: "#005ae0",
+  backgroundColor: "#0068ff",
   color: "#fff",
   minWidth: 20,
   height: 20,

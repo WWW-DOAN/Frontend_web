@@ -6,14 +6,14 @@ import { TabList, TabPanel } from "@mui/lab";
 
 /* ===== Layout ===== */
 export const Page = styled(Stack)({
-    minHeight: "100vh",
-    backgroundColor: "#E8F3FF",
+    minHeight: "100dvh",
+    backgroundColor: "#f2f6fc",
 });
 
 export const Content = styled(Stack)({
     width: "100%",
-    maxWidth: 580,
-    margin: "32px auto",
+    maxWidth: 520,
+    margin: "clamp(20px, 6vh, 56px) auto",
     alignItems: "center",
     padding: "0 16px",
 });
@@ -35,13 +35,13 @@ export const Subtitle = styled(Typography)({
 export const Card = styled(Box)({
     width: "100%",
     backgroundColor: "#fff",
-    borderRadius: 16,
+    borderRadius: 12,
     border: "1px solid #E5E7EB",
     overflow: "hidden",
-    boxShadow: "0 8px 30px rgba(0,0,0,0.06)",
+    boxShadow: "0 6px 24px rgba(26,43,67,0.08)",
     display: "flex",
     flexDirection: "column",
-    minHeight: "clamp(520px, 70vh, 620px)",
+    minHeight: "clamp(500px, 68vh, 600px)",
 });
 
 export const TabContainer = styled(Box)({

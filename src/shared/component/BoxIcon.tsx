@@ -13,13 +13,13 @@ interface BoxIconProps {
 const StyledBoxIcon = styled(Box, {
     shouldForwardProp: (prop) => prop !== "selected",
 })<{ selected?: boolean }>(({ selected }) => ({
-    borderRadius: "8px",
+    borderRadius: "10px",
     minHeight: "48px",
     minWidth: "48px",
-    backgroundColor: selected ? "rgba(0, 0, 0, 0.25)" : "transparent",
+    backgroundColor: selected ? "rgba(255, 255, 255, 0.2)" : "transparent",
     transition: "all 0.2s ease",
     "&:hover": {
-        backgroundColor: "#00000026",
+        backgroundColor: "rgba(255, 255, 255, 0.14)",
         cursor: "pointer",
     },
     display: "flex",
@@ -40,7 +40,7 @@ const BoxIcon = ({
             <IconComponent
                 sx={{
                     color: "#fff",
-                    fontSize: 28,
+                    fontSize: 26,
                 }}
             />
         </StyledBoxIcon>

@@ -50,7 +50,7 @@ interface ChatPanelProps {
 const Root = styled(Box)({
   width: "100%",
   height: "100%",
-  background: "#fff",
+  background: "#f7f9fb",
   display: "flex",
   flexDirection: "column",
   overflow: "hidden",
@@ -62,7 +62,8 @@ const HeaderWrap = styled(Box)({
   minHeight: 70,
   maxHeight: 70,
   flexShrink: 0,
-  borderBottom: "1px solid #E5E7EB",
+  borderBottom: "1px solid #e6e9ee",
+  background: "#fff",
 });
 
 const MessageListWrap = styled(Box)({
