@@ -1801,7 +1801,6 @@ const MessageItem: React.FC<MessageItemProps> = ({
                           key={att.key || index}
                           poll={matchedPoll}
                           conversationId={targetConvId}
-                          compact
                           onVote={onRefreshPolls}
                           onWithdraw={onRefreshPolls}
                           onClose={onRefreshPolls}
