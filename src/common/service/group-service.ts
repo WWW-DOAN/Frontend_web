@@ -1,37 +1,46 @@
-// TODO: Replace with your new backend group service
-// This service needs to be updated to match your new backend API structure
+import { chatService } from "./chat-service";
 
 export const groupService = {
-    createGroupConversation(name: string, memberIds: string[], avatarUrl?: string | null) {
-        console.log('createGroupConversation called with:', { name, memberIds, avatarUrl });
-        return Promise.resolve({ statusCode: 501, ok: false, payload: { message: 'Not implemented - update for new backend' } });
-    },
-    addMembersToGroup(conversationId: string, memberIds: string[]) {
-        console.log('addMembersToGroup called with:', { conversationId, memberIds });
-        return Promise.resolve({ statusCode: 501, ok: false, payload: { message: 'Not implemented - update for new backend' } });
-    },
-    removeMemberFromGroup(conversationId: string, memberId: string) {
-        console.log('removeMemberFromGroup called with:', { conversationId, memberId });
-        return Promise.resolve({ statusCode: 501, ok: false, payload: { message: 'Not implemented - update for new backend' } });
-    },
-    leaveGroup(conversationId: string) {
-        console.log('leaveGroup called with:', conversationId);
-        return Promise.resolve({ statusCode: 501, ok: false, payload: { message: 'Not implemented - update for new backend' } });
-    },
-    updateMemberRole(conversationId: string, memberId: string, role: string) {
-        console.log('updateMemberRole called with:', { conversationId, memberId, role });
-        return Promise.resolve({ statusCode: 501, ok: false, payload: { message: 'Not implemented - update for new backend' } });
-    },
-    disbandGroup(conversationId: string) {
-        console.log('disbandGroup called with:', conversationId);
-        return Promise.resolve({ statusCode: 501, ok: false, payload: { message: 'Not implemented - update for new backend' } });
-    },
-    updateConversation(conversationId: string, name?: string, avatarUrl?: string | null) {
-        console.log('updateConversation called with:', { conversationId, name, avatarUrl });
-        return Promise.resolve({ statusCode: 501, ok: false, payload: { message: 'Not implemented - update for new backend' } });
-    },
-    updateMySettings(conversationId: string, nickname?: string) {
-        console.log('updateMySettings called with:', { conversationId, nickname });
-        return Promise.resolve({ statusCode: 501, ok: false, payload: { message: 'Not implemented - update for new backend' } });
-    },
+  createGroupConversation(name: string, memberIds: string[], avatarUrl?: string | null) {
+    return chatService.createGroupConversation({
+      name,
+      memberIds,
+      avatarUrl: avatarUrl ?? undefined,
+    });
+  },
+
+  addMembersToGroup(conversationId: string, memberIds: string[]) {
+    return chatService.addMembers(conversationId, { memberIds });
+  },
+
+  removeMemberFromGroup(conversationId: string, memberId: string) {
+    return chatService.removeMember(conversationId, memberId);
+  },
+
+  leaveGroup(conversationId: string) {
+    return chatService.leaveConversation(conversationId);
+  },
+
+  updateMemberRole(conversationId: string, memberId: string, role: "ADMIN" | "MEMBER") {
+    return chatService.updateMemberRole(conversationId, memberId, role);
+  },
+
+  disbandGroup(conversationId: string) {
+    return chatService.disbandGroup(conversationId);
+  },
+
+  updateConversation(conversationId: string, name?: string, avatarUrl?: string | null) {
+    if (avatarUrl === null) {
+      throw new Error("The group API does not support clearing the avatar.");
+    }
+
+    return chatService.updateConversation(conversationId, {
+      ...(name !== undefined ? { name } : {}),
+      ...(avatarUrl !== undefined ? { avatarUrl } : {}),
+    });
+  },
+
+  updateMySettings(conversationId: string, nickname?: string) {
+    return chatService.updateConversationSettings(conversationId, { nickname });
+  },
 };
