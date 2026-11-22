@@ -199,28 +199,4 @@ export const API = {
     API_CALLS_REJECT: (conversationId: string, callId: string) =>
         `/api/conversations/${conversationId}/calls/${callId}/reject`,
     API_ICE_SERVERS: "/api/conversations/ice-servers",
-
-    /* ================= GROUP CALL (SFU) ================= */
-    API_GROUP_CALLS_CREATE: (conversationId: string) =>
-        `/api/conversations/${conversationId}/group-calls`,
-    API_GROUP_CALLS_JOIN: (conversationId: string, sessionId: string) =>
-        `/api/conversations/${conversationId}/group-calls/${sessionId}/join`,
-    API_GROUP_CALLS_LEAVE: (conversationId: string, sessionId: string) =>
-        `/api/conversations/${conversationId}/group-calls/${sessionId}/leave`,
-    API_GROUP_CALLS_END: (conversationId: string, sessionId: string) =>
-        `/api/conversations/${conversationId}/group-calls/${sessionId}/end`,
-    API_GROUP_CALLS_ACTIVE: (conversationId: string) =>
-        `/api/conversations/${conversationId}/group-calls/active`,
-    API_SFU_ROOMS: "/api/sfu/rooms",
-    API_SFU_ROOM: (roomId: string) => `/api/sfu/rooms/${roomId}`,
-    API_SFU_PRODUCERS: (roomId: string) => `/api/sfu/rooms/${roomId}/producers`,
-    API_SFU_CREATE_TRANSPORT: (roomId: string) => `/api/sfu/rooms/${roomId}/create-transport`,
-    API_SFU_CONNECT_TRANSPORT: (roomId: string) => `/api/sfu/rooms/${roomId}/connect-transport`,
-    API_SFU_PRODUCE: (roomId: string) => `/api/sfu/rooms/${roomId}/produce`,
-    API_SFU_CONSUME: (roomId: string) => `/api/sfu/rooms/${roomId}/consume`,
-    API_SFU_RESUME_CONSUMER: (roomId: string) => `/api/sfu/rooms/${roomId}/resume-consumer`,
-    API_SFU_SET_PREFERRED_LAYERS: (roomId: string) => `/api/sfu/rooms/${roomId}/set-preferred-layers`,
-    API_SFU_REQUEST_KEYFRAME: (roomId: string) => `/api/sfu/rooms/${roomId}/request-keyframe`,
-    API_SFU_CLOSE_PRODUCER: (roomId: string) => `/api/sfu/rooms/${roomId}/close-producer`,
-    API_SFU_WS: (roomId: string, peerId: string) => `/sfu/ws?roomId=${roomId}&peerId=${peerId}`,
 } as const;

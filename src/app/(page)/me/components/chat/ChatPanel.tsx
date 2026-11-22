@@ -1,14 +1,11 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } from "react";
-import { Box, Typography, Collapse, IconButton, Button } from "@mui/material";
+import { Box, Typography, Collapse, IconButton } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import PollOutlinedIcon from "@mui/icons-material/PollOutlined";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
-import PhoneInTalkIcon from "@mui/icons-material/PhoneInTalk";
-import VideocamIcon from "@mui/icons-material/Videocam";
-
 import ChatHeader from "./ChatHeader";
 import MessageList from "./MessageList";
 import ChatInput from "./ChatInput";
@@ -20,11 +17,8 @@ import CreateReminderModal from "./CreateReminderModal";
 import CreateNoteModal from "./CreateNoteModal";
 import CreateTodoModal from "./CreateTodoModal";
 import { chatService } from "@/src/common/service/chat-service";
-import { callService } from "@/src/common/service/call-service";
 import { ConversationPoll } from "@/src/common/interface/conversation-interface";
 import { useChatStore } from "@/src/common/store/useChatStore";
-import { useCallStore } from "@/src/common/store/useCallStore";
-import { handleIncomingGroupCall } from "@/src/common/action/call.action";
 import {
   deleteMessage,
   editMessage,
@@ -126,13 +120,6 @@ export default function ChatPanel({
   const [showCreateReminderModal, setShowCreateReminderModal] = useState(false);
   const [showCreateNoteModal, setShowCreateNoteModal] = useState(false);
   const [showCreateTodoModal, setShowCreateTodoModal] = useState(false);
-  const [activeGroupCall, setActiveGroupCall] = useState<{
-    sessionId: string;
-    sfuRoomId: string;
-    type: "AUDIO" | "VIDEO";
-  } | null>(null);
-  const callActive = useCallStore((s) => s.active);
-  const callStatus = useCallStore((s) => s.status);
 
   const {
     socketConnected,
@@ -190,53 +177,8 @@ export default function ChatPanel({
     } else {
       setPolls([]);
       setShowPollsList(false);
-      setActiveGroupCall(null);
     }
   }, [conversationId, isGroup, fetchPolls]);
-
-  const fetchActiveGroupCall = useCallback(async () => {
-    if (!conversationId || !isGroup) {
-      setActiveGroupCall(null);
-      return;
-    }
-    try {
-      const res: any = await callService.getActiveGroupCall(conversationId);
-      const session = res?.session || res?.payload?.session || res?.data?.session;
-      const participants = res?.participants || res?.payload?.participants || [];
-      const activeParticipants = Array.isArray(participants)
-        ? participants.filter((p: any) => !p.leftAt)
-        : [];
-      if (session?.id && session?.sfuRoomId && session?.status === "ACTIVE" && activeParticipants.length > 0) {
-        setActiveGroupCall({
-          sessionId: session.id,
-          sfuRoomId: session.sfuRoomId,
-          type: session.type === "VIDEO" ? "VIDEO" : "AUDIO",
-        });
-      } else {
-        setActiveGroupCall(null);
-      }
-    } catch {
-      setActiveGroupCall(null);
-    }
-  }, [conversationId, isGroup]);
-
-  useEffect(() => {
-    if (!isGroup) return;
-    void fetchActiveGroupCall();
-
-    const handleGroupCallEvent = (e: Event) => {
-      const detail = (e as CustomEvent).detail;
-      if (!detail?.conversation_id || detail.conversation_id === conversationId) {
-        void fetchActiveGroupCall();
-      }
-    };
-    window.addEventListener("group-call:updated", handleGroupCallEvent);
-    window.addEventListener("sfu:signal", handleGroupCallEvent);
-    return () => {
-      window.removeEventListener("group-call:updated", handleGroupCallEvent);
-      window.removeEventListener("sfu:signal", handleGroupCallEvent);
-    };
-  }, [conversationId, isGroup, callStatus, fetchActiveGroupCall]);
 
   useEffect(() => {
     const handleOpenModal = (e: Event) => {
@@ -453,68 +395,6 @@ export default function ChatPanel({
           onBackClick={onBackClick}
         />
       </HeaderWrap>
-
-      {isGroup && activeGroupCall && !callActive && (
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            px: 2,
-            py: 1,
-            bgcolor: "#ECFDF5",
-            borderBottom: "1px solid #A7F3D0",
-            gap: 1.5,
-          }}
-        >
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            {activeGroupCall.type === "VIDEO" ? (
-              <VideocamIcon sx={{ fontSize: 20, color: "#059669" }} />
-            ) : (
-              <PhoneInTalkIcon sx={{ fontSize: 20, color: "#059669" }} />
-            )}
-            <Typography sx={{ fontSize: 13, fontWeight: 600, color: "#065F46" }}>
-              {activeGroupCall.type === "VIDEO"
-                ? "Cuộc gọi video nhóm đang diễn ra"
-                : "Cuộc gọi thoại nhóm đang diễn ra"}
-            </Typography>
-          </Box>
-          <Button
-            size="small"
-            variant="contained"
-            onClick={() => {
-              useCallStore.getState().receiveCall({
-                callId: activeGroupCall.sessionId,
-                conversationId,
-                callerId: "",
-                callerName: title || conversation?.name || t("CHAT.CALL_GROUP"),
-                type: "GROUP",
-                groupCallType: activeGroupCall.type,
-                sfuRoomId: activeGroupCall.sfuRoomId,
-                sessionId: activeGroupCall.sessionId,
-              });
-              void handleIncomingGroupCall(
-                conversationId,
-                activeGroupCall.sessionId,
-                activeGroupCall.sfuRoomId,
-                activeGroupCall.type
-              );
-            }}
-            sx={{
-              bgcolor: "#10B981",
-              textTransform: "none",
-              fontWeight: 600,
-              fontSize: 12,
-              px: 2,
-              borderRadius: "16px",
-              boxShadow: "none",
-              "&:hover": { bgcolor: "#059669", boxShadow: "none" },
-            }}
-          >
-            Tham gia
-          </Button>
-        </Box>
-      )}
 
       {pinnedMessages.length > 0 && (
         <PinnedMessageBarComponent

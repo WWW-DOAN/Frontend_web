@@ -17,55 +17,6 @@ export interface StartCallResponse {
   participants: { userId: string; joinedAt: string }[];
 }
 
-export interface GroupCallSessionData {
-  id: string;
-  conversationId: string;
-  sfuRoomId: string;
-  startedBy: string;
-  hostId: string;
-  type?: "AUDIO" | "VIDEO";
-  status: string;
-  startedAt: string;
-}
-
-export interface GroupCallSessionResponse {
-  session: GroupCallSessionData;
-  participant: any;
-}
-
-export interface TransportResponse {
-  transportId: string;
-  iceParameters: any;
-  iceCandidates: any[];
-  dtlsParameters: any;
-}
-
-export interface ProduceResponse {
-  producerId: string;
-}
-
-export interface ConsumeResponse {
-  consumerId: string;
-  producerId: string;
-  kind: "audio" | "video";
-  rtpParameters: any;
-  type: string;
-}
-
-export interface SfuProducerInfo {
-  id: string;
-  kind: "audio" | "video";
-  peerId?: string;
-  appData?: any;
-}
-
-export interface RoomResponse {
-  roomId: string;
-  conversationId: string;
-  routerRtpCapabilities: any;
-  producers?: SfuProducerInfo[];
-}
-
 export const callService = {
   async getIceServers(): Promise<{ iceServers: IceServer[] }> {
     const res = await http.get<{ iceServers: IceServer[] }>(API.API_ICE_SERVERS);
@@ -99,76 +50,6 @@ export const callService = {
 
   async rejectCall(conversationId: string, callId: string) {
     const res = await http.post(API.API_CALLS_REJECT(conversationId, callId), {});
-    return res.payload;
-  },
-
-  async getActiveGroupCall(conversationId: string): Promise<GroupCallSessionResponse | null> {
-    const res = await http.get<GroupCallSessionResponse>(API.API_GROUP_CALLS_ACTIVE(conversationId));
-    return res.payload;
-  },
-
-  async createGroupCall(conversationId: string, type: "AUDIO" | "VIDEO" = "AUDIO"): Promise<GroupCallSessionResponse> {
-    const res = await http.post<GroupCallSessionResponse>(API.API_GROUP_CALLS_CREATE(conversationId), { type });
-    return res.payload;
-  },
-
-  async joinGroupCall(conversationId: string, sessionId: string) {
-    const res = await http.post(API.API_GROUP_CALLS_JOIN(conversationId, sessionId), {});
-    return res.payload;
-  },
-
-  async leaveGroupCall(conversationId: string, sessionId: string) {
-    const res = await http.post(API.API_GROUP_CALLS_LEAVE(conversationId, sessionId), {});
-    return res.payload;
-  },
-
-  async endGroupCall(conversationId: string, sessionId: string) {
-    const res = await http.post(API.API_GROUP_CALLS_END(conversationId, sessionId), {});
-    return res.payload;
-  },
-
-  async createSfuRoom(roomId: string, conversationId: string): Promise<RoomResponse> {
-    const res = await http.post<RoomResponse>(API.API_SFU_ROOMS, { roomId, conversationId });
-    return res.payload;
-  },
-
-  async getSfuRoom(roomId: string): Promise<RoomResponse> {
-    const res = await http.get<RoomResponse>(API.API_SFU_ROOM(roomId));
-    return res.payload;
-  },
-
-  async getSfuProducers(roomId: string): Promise<{ producers: SfuProducerInfo[] }> {
-    const res = await http.get<{ producers: SfuProducerInfo[] }>(API.API_SFU_PRODUCERS(roomId));
-    return res.payload;
-  },
-
-  async createSfuTransport(roomId: string, peerId: string, direction: "send" | "recv"): Promise<TransportResponse> {
-    const res = await http.post<TransportResponse>(API.API_SFU_CREATE_TRANSPORT(roomId), { peerId, direction });
-    return res.payload;
-  },
-
-  async connectSfuTransport(roomId: string, transportId: string, dtlsParameters: any) {
-    const res = await http.post(API.API_SFU_CONNECT_TRANSPORT(roomId), { transportId, dtlsParameters });
-    return res.payload;
-  },
-
-  async produce(roomId: string, transportId: string, kind: "audio" | "video", rtpParameters: any, appData?: any): Promise<ProduceResponse> {
-    const res = await http.post<ProduceResponse>(API.API_SFU_PRODUCE(roomId), { transportId, kind, rtpParameters, appData });
-    return res.payload;
-  },
-
-  async consume(roomId: string, transportId: string, producerId: string, rtpCapabilities: any): Promise<ConsumeResponse> {
-    const res = await http.post<ConsumeResponse>(API.API_SFU_CONSUME(roomId), { transportId, producerId, rtpCapabilities });
-    return res.payload;
-  },
-
-  async resumeConsumer(roomId: string, consumerId: string) {
-    const res = await http.post(API.API_SFU_RESUME_CONSUMER(roomId), { consumerId });
-    return res.payload;
-  },
-
-  async closeProducer(roomId: string, producerId: string) {
-    const res = await http.post(API.API_SFU_CLOSE_PRODUCER(roomId), { producerId });
     return res.payload;
   },
 };

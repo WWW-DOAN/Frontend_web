@@ -8,7 +8,8 @@ import CallEndIcon from "@mui/icons-material/CallEnd";
 import GroupsIcon from "@mui/icons-material/Groups";
 import VideocamIcon from "@mui/icons-material/Videocam";
 import { CircularProgress } from "@mui/material";
-import { answerCall, rejectCall, handleIncomingGroupCall, endCall } from "@/src/common/action/call.action";
+import { toast } from "react-toastify";
+import { answerCall, rejectCall, endCall } from "@/src/common/action/call.action";
 import { useCallStore } from "@/src/common/store/useCallStore";
 import { useTrans } from "@/src/common/utilities/hook/trans";
 import { playRingtone, stopRingtone } from "@/src/common/service/ringtone";
@@ -246,6 +247,13 @@ export default function IncomingCallDialog() {
     stopRingtone();
     setVisible(false);
 
+    if (isGroup) {
+      toast.info("Tính năng gọi nhóm đang phát triển.");
+      setData(null);
+      dataRef.current = null;
+      return;
+    }
+
     const store = useCallStore.getState();
     const wasInExistingCall = store.active && store.status !== "idle";
 
@@ -265,11 +273,7 @@ export default function IncomingCallDialog() {
       sessionId: data.session_id,
     });
 
-    if (isGroup) {
-      handleIncomingGroupCall(data.conversation_id, data.session_id, data.sfu_room_id, resolvedGroupType);
-    } else {
-      answerCall(data.conversation_id, data.call_id);
-    }
+    answerCall(data.conversation_id, data.call_id);
   };
 
   const handleReject = (e: React.MouseEvent) => {

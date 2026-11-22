@@ -52,7 +52,6 @@ import IncomingCallDialog from "./components/call/IncomingCallDialog";
 import CallDialog from "./components/call/CallDialog";
 
 import { cleanupChat, initChat } from "@/src/common/action/chat.action";
-import { handleSfuSignal } from "@/src/common/action/call.action";
 import { usePresenceHeartbeat } from "@/src/common/hooks/usePresenceHeartbeat";
 import { fetchAuthData } from "@/src/common/helpers/fetchDataHelpers";
 import { useTrans } from "@/src/common/utilities/hook/trans";
@@ -377,14 +376,6 @@ const Me = () => {
     return () => {
       window.removeEventListener('app:switch_tab', handleSwitchTab);
     };
-  }, []);
-
-  useEffect(() => {
-    const handler = (e: Event) => {
-      handleSfuSignal((e as CustomEvent).detail);
-    };
-    window.addEventListener("sfu:signal", handler);
-    return () => window.removeEventListener("sfu:signal", handler);
   }, []);
 
   usePresenceHeartbeat({

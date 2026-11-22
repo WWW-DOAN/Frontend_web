@@ -39,21 +39,11 @@ const pendingConversationSubscriptions = new Set<string>();
 const dispatchCallSignalMessage = (rawBody: string) => {
   try {
     const callData = JSON.parse(rawBody);
-    if (callData.type === "incoming_call" || callData.type === "incoming_group_call") {
-      if (callData.type === "incoming_group_call") {
-        window.dispatchEvent(new CustomEvent("group-call:updated", { detail: callData }));
-      }
+    if (callData.type === "incoming_call") {
       window.dispatchEvent(new CustomEvent("call:incoming", { detail: callData }));
     } else if (callData.type === "hangup") {
       window.dispatchEvent(new CustomEvent("call:hangup", { detail: callData }));
       handleCallSignal(callData);
-    } else if (
-      callData.type === "sfu-peer-joined" ||
-      callData.type === "sfu-peer-left" ||
-      callData.type === "sfu-active-speaker" ||
-      callData.type === "sfu-transport-state"
-    ) {
-      window.dispatchEvent(new CustomEvent("sfu:signal", { detail: callData }));
     } else {
       handleCallSignal(callData);
     }
@@ -198,9 +188,6 @@ export const connectSocket = (accessToken?: string, userId?: string) => {
                 if (data.type === "incoming_call") {
                   sendSocketMessage("/app/call.ready", { conversation_id: convId });
                 }
-              }
-              if (data.type === "incoming_group_call") {
-                window.dispatchEvent(new CustomEvent("group-call:updated", { detail: data }));
               }
               const event = new CustomEvent("call:incoming", { detail: data });
               window.dispatchEvent(event);
