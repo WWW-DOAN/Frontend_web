@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Box,
   Button,
@@ -50,13 +50,28 @@ export default function PollsListDialog({
   onOpenCreatePoll,
 }: PollsListDialogProps) {
   const [tab, setTab] = useState<"OPEN" | "CLOSED">("OPEN");
+  const [now, setNow] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const updateTime = () => setNow(Date.now());
+    const timeout = setTimeout(updateTime, 0);
+    const interval = setInterval(updateTime, 60_000);
+
+    return () => {
+      clearTimeout(timeout);
+      clearInterval(interval);
+    };
+  }, [open]);
 
   const { openPolls, closedPolls } = useMemo(() => {
-    const now = Date.now();
     const openList: ConversationPoll[] = [];
     const closedList: ConversationPoll[] = [];
     polls.forEach((p) => {
-      const expired = Boolean(p.expiresAt && new Date(p.expiresAt).getTime() < now);
+      const expired = Boolean(
+        now !== null && p.expiresAt && new Date(p.expiresAt).getTime() < now
+      );
       if (p.status === "OPEN" && !expired) {
         openList.push(p);
       } else {
@@ -64,7 +79,7 @@ export default function PollsListDialog({
       }
     });
     return { openPolls: openList, closedPolls: closedList };
-  }, [polls]);
+  }, [polls, now]);
 
   const displayedPolls = tab === "OPEN" ? openPolls : closedPolls;
 

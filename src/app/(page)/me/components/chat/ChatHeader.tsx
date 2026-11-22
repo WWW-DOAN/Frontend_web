@@ -13,7 +13,6 @@ import SearchIcon from "@mui/icons-material/Search";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import { startCall, startGroupCall } from "@/src/common/action/call.action";
-import { useMemo } from "react";
 
 interface ChatHeaderProps {
   socketConnected: boolean;
@@ -138,12 +137,11 @@ export default function ChatHeader({
   const typingUsers = (conversationId ? typingMap[conversationId] : undefined) || [];
   const isTyping = typingUsers.length > 0;
 
-  const memberAvatars = useMemo(() => {
-    if (isDirect) return [];
-    return (members || [])
+  const memberAvatars = isDirect
+    ? []
+    : members
       .map((m: any) => resolveMediaUrl(m.avatarUrl))
       .filter(Boolean) as string[];
-  }, [isDirect, members]);
 
   const totalMembers = conversation?.members?.length || conversation?.memberCount || 0;
 
