@@ -11,6 +11,7 @@ import { useTrans } from "@/src/common/utilities/hook/trans";
 interface MediaSectionProps {
   items: AttachmentDto[];
   onMediaClick?: (url: string, mediaList: AttachmentDto[], index: number) => void;
+  onViewAll?: () => void;
 }
 
 const EmptyHint = styled(Typography)({
@@ -105,7 +106,7 @@ const ViewAllButton = styled(Button)({
   },
 });
 
-export default function MediaSection({ items, onMediaClick }: MediaSectionProps) {
+export default function MediaSection({ items, onMediaClick, onViewAll }: MediaSectionProps) {
   const t = useTrans();
   return (
     <SectionBlock title={t("CONVO.MEDIA_TITLE")} defaultOpen>
@@ -141,7 +142,11 @@ export default function MediaSection({ items, onMediaClick }: MediaSectionProps)
             })}
           </MediaGrid>
 
-          {items.length > 8 && <ViewAllButton fullWidth>{t("CONVO.VIEW_ALL")}</ViewAllButton>}
+          {items.length > 0 && (
+            <ViewAllButton fullWidth onClick={onViewAll}>
+              {t("CONVO.VIEW_ALL")}
+            </ViewAllButton>
+          )}
         </>
       ) : (
         <EmptyHint>{t("CONVO.MEDIA_EMPTY")}</EmptyHint>

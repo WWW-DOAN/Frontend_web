@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Box, Typography } from "@mui/material";
+import { Box, Button, Typography } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import LinkRoundedIcon from "@mui/icons-material/LinkRounded";
 import SectionBlock from "./SectionBlock";
@@ -9,6 +9,7 @@ import { useTrans } from "@/src/common/utilities/hook/trans";
 
 interface LinkSectionProps {
   items: string[];
+  onViewAll?: () => void;
 }
 
 const EmptyHint = styled(Typography)({
@@ -62,7 +63,7 @@ const ViewMoreButton = styled(Box)({
   },
 });
 
-export default function LinkSection({ items }: LinkSectionProps) {
+export default function LinkSection({ items, onViewAll }: LinkSectionProps) {
   const t = useTrans();
   const [expanded, setExpanded] = useState(false);
   const visibleItems = expanded ? items : items.slice(0, 8);
@@ -81,10 +82,15 @@ export default function LinkSection({ items }: LinkSectionProps) {
               </ItemContent>
             </ItemRow>
           ))}
+          <Button fullWidth size="small" onClick={onViewAll} sx={{ textTransform: "none" }}>
+            {t("CONVO.VIEW_ALL")}
+          </Button>
           {items.length > 8 && (
-            <ViewMoreButton onClick={() => setExpanded(!expanded)}>
-              {expanded ? t("CONVO.COLLAPSE") : t("CONVO.VIEW_MORE", { count: items.length - 8 })}
-            </ViewMoreButton>
+            <>
+              <ViewMoreButton onClick={() => setExpanded(!expanded)}>
+                {expanded ? t("CONVO.COLLAPSE") : t("CONVO.VIEW_MORE", { count: items.length - 8 })}
+              </ViewMoreButton>
+            </>
           )}
         </ItemList>
       ) : (

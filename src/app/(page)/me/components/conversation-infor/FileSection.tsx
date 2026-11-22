@@ -1,6 +1,6 @@
 "use client";
 
-import { Box, Typography } from "@mui/material";
+import { Box, Button, Typography } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
 import SectionBlock from "./SectionBlock";
@@ -10,6 +10,7 @@ import { useTrans } from "@/src/common/utilities/hook/trans";
 
 interface FileSectionProps {
     items: AttachmentDto[];
+    onViewAll?: () => void;
 }
 
 const EmptyHint = styled(Typography)({
@@ -57,7 +58,7 @@ const ItemSub = styled(Typography)({
     marginTop: 2,
 });
 
-export default function FileSection({ items }: FileSectionProps) {
+export default function FileSection({ items, onViewAll }: FileSectionProps) {
     const t = useTrans();
     const formatFileSize = (size?: number) => {
         if (!size || Number.isNaN(size)) return "";
@@ -78,6 +79,11 @@ export default function FileSection({ items }: FileSectionProps) {
                             </ItemContent>
                         </ItemRow>
                     ))}
+                    {items.length > 0 && (
+                        <Button fullWidth size="small" onClick={onViewAll} sx={{ mt: 0.5, textTransform: "none" }}>
+                            {t("CONVO.VIEW_ALL")}
+                        </Button>
+                    )}
                 </ItemList>
             ) : (
                 <EmptyHint>{t("CONVO.FILE_EMPTY")}</EmptyHint>

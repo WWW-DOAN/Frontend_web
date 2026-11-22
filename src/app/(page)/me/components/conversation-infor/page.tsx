@@ -28,6 +28,7 @@ import GroupMemberListView from "./GroupMemberListView";
 import AddMemberGroupDialog from "./AddMemberGroupDialog";
 import GroupSettingsDialog from "./GroupSettingsDialog";
 import GroupBoardSection from "./GroupBoardSection";
+import ConversationMediaGallery from "./ConversationMediaGallery";
 
 interface InfConvColumnProps {
   conversationId: string;
@@ -95,6 +96,8 @@ export default function InfConvColumn({
   const [showGroupSettings, setShowGroupSettings] = useState(false);
   const [pendingJoinRequests, setPendingJoinRequests] = useState(0);
   const [pollsCount, setPollsCount] = useState(0);
+  const [galleryOpen, setGalleryOpen] = useState(false);
+  const [galleryTab, setGalleryTab] = useState<"media" | "files" | "links">("media");
 
   useEffect(() => {
     setMounted(true);
@@ -257,6 +260,31 @@ export default function InfConvColumn({
   const handleViewPolls = () => {
     if (onViewPolls) onViewPolls();
     else window.dispatchEvent(new CustomEvent("chat:open_modal", { detail: "view_polls" }));
+  };
+
+  const openGallery = (tab: "media" | "files" | "links") => {
+    setGalleryTab(tab);
+    setGalleryOpen(true);
+  };
+
+  const handleNavigateToMessage = (messageId: string) => {
+    const messageElement = document.getElementById(`msg-${messageId}`);
+    if (!messageElement) {
+      toast.info(t("CONVO.GALLERY_MESSAGE_NOT_FOUND"));
+      return;
+    }
+
+    messageElement.scrollIntoView({ behavior: "smooth", block: "center" });
+    messageElement.style.transition = "background-color 0.3s ease, outline 0.3s ease";
+    messageElement.style.backgroundColor = "#FFF3CD";
+    messageElement.style.outline = "2px solid #FCD34D";
+    messageElement.style.borderRadius = "8px";
+    window.setTimeout(() => {
+      messageElement.style.backgroundColor = "";
+      messageElement.style.outline = "";
+      messageElement.style.borderRadius = "";
+    }, 2000);
+    onClose?.();
   };
 
   const refresh = () => fetchListConversation({ page: 1, limit: 20 });
@@ -610,6 +638,7 @@ export default function InfConvColumn({
 
       <MediaSection
         items={mediaItems}
+        onViewAll={() => openGallery("media")}
         onMediaClick={(url, mediaList, index) => {
           const items: MediaPreviewItem[] = mediaList.map((att) => ({
             key: att.url || att.thumbnailUrl || att.key || "",
@@ -619,10 +648,26 @@ export default function InfConvColumn({
           setMediaPreview({ open: true, mediaList: items, initialIndex: index });
         }}
       />
-      <FileSection items={fileItems} />
-      <LinkSection items={links} />
+      <FileSection items={fileItems} onViewAll={() => openGallery("files")} />
+      <LinkSection items={links} onViewAll={() => openGallery("links")} />
       <SecuritySection />
       <DangerZone conversationId={conversationId} />
+
+      <ConversationMediaGallery
+        open={galleryOpen}
+        initialTab={galleryTab}
+        messages={messages}
+        onClose={() => setGalleryOpen(false)}
+        onNavigateToMessage={handleNavigateToMessage}
+        onPreviewMedia={(items, index) => {
+          const previewItems: MediaPreviewItem[] = items.map((item) => ({
+            key: item.url || item.thumbnailUrl || item.key || "",
+            name: item.name || t("CHAT.FILE"),
+            type: item.type || "image",
+          }));
+          setMediaPreview({ open: true, mediaList: previewItems, initialIndex: index });
+        }}
+      />
 
       <MediaPreviewModal
         open={mediaPreview.open}
