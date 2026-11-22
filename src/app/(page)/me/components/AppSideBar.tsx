@@ -42,6 +42,7 @@ const Sidebar = styled(Box)({
   flexDirection: "column",
   alignItems: "center",
   padding: "0px 6px",
+  boxSizing: "border-box",
 });
 
 const AvatarStyled = styled(Avatar)({
