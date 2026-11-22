@@ -33,7 +33,7 @@ export async function uploadMedia({
   const resourceType = getCloudinaryResourceType(file.type);
   const needsAttachmentTransform = resourceType === "raw";
 
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4321";
+  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "https://breezy-oblong-chip.ngrok-free.dev";
 
   // Thử upload qua Cloudinary nếu backend cung cấp chữ ký
   try {
@@ -42,6 +42,7 @@ export async function uploadMedia({
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
+        "ngrok-skip-browser-warning": "true",
       },
       body: JSON.stringify({
         resourceType,

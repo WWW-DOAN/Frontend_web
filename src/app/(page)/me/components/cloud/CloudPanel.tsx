@@ -304,9 +304,9 @@ export default function CloudPanel({ defaultView = "all" }: CloudPanelProps) {
       
       // 1. Request signed signature from backend gateway
       const signRes = await axios.post(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4321"}/api/media/cloudinary-sign`,
+        `${process.env.NEXT_PUBLIC_API_BASE_URL || "https://breezy-oblong-chip.ngrok-free.dev"}/api/media/cloudinary-sign`,
         { resourceType: file.type.startsWith("image/") ? "image" : "auto" },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}`, "ngrok-skip-browser-warning": "true" } }
       );
 
       if (!signRes.data.success) {

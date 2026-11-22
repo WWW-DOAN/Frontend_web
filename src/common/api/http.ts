@@ -62,6 +62,10 @@ const buildBodyAndHeaders = (options?: CustomOptions) => {
   const headers: Record<string, string> =
     body instanceof FormData ? {} : { "Content-Type": "application/json" };
 
+  // ngrok free chèn trang cảnh báo HTML vào response nếu thiếu header này
+  // (khiến fetch parse JSON fail). Header vô hại với local/nginx thường.
+  headers["ngrok-skip-browser-warning"] = "true";
+
   if (!options?.skipAuth && typeof window !== "undefined") {
     const token = localStorage.getItem("accessToken");
     if (token) {

@@ -151,7 +151,7 @@ function cleanupSfu() {
 }
 
 function getSfuWsUrl(roomId: string, peerId: string): string {
-  const envUrl = process.env.NEXT_PUBLIC_SOCKET_URL || (typeof window !== "undefined" ? window.location.origin : "http://localhost:4321");
+  const envUrl = process.env.NEXT_PUBLIC_SOCKET_URL || (typeof window !== "undefined" ? window.location.origin : "https://breezy-oblong-chip.ngrok-free.dev");
   const wsBase = envUrl.replace(/^http:/, "ws:").replace(/^https:/, "wss:").replace(/\/ws\/?$/, "");
   const token = typeof window !== "undefined" ? (localStorage.getItem("accessToken") || "") : "";
   return `${wsBase}/sfu/ws?token=${token}&roomId=${roomId}&peerId=${peerId}`;

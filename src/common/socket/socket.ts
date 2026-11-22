@@ -2,7 +2,34 @@ import { Client, IMessage } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
 import { handleCallSignal } from "../action/call.action";
 
-const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL;
+const socketUrl =
+  process.env.NEXT_PUBLIC_SOCKET_URL || "https://breezy-oblong-chip.ngrok-free.dev";
+
+// SockJS dùng XHR cho bước /info và các transport fallback. ngrok free chèn
+// trang cảnh báo HTML nếu thiếu header này -> SockJS không handshake được.
+// Patch có điều kiện theo URL nên không ảnh hưởng khi chạy local/nginx.
+const ensureNgrokHeadersOnXhr = () => {
+  if (typeof window === "undefined") return;
+  const proto = XMLHttpRequest.prototype as any;
+  if (proto.__ngrokPatched) return;
+  proto.__ngrokPatched = true;
+
+  const originalOpen = proto.open;
+  proto.open = function (this: any, ...args: any[]) {
+    this.__ngrokUrl = String(args[1] ?? "");
+    return originalOpen.apply(this, args);
+  };
+
+  const originalSend = proto.send;
+  proto.send = function (this: any, ...args: any[]) {
+    if (typeof this.__ngrokUrl === "string" && this.__ngrokUrl.includes("ngrok-free")) {
+      try {
+        this.setRequestHeader("ngrok-skip-browser-warning", "true");
+      } catch {}
+    }
+    return originalSend.apply(this, args);
+  };
+};
 
 let stompClient: Client | null = null;
 let currentUserId: string | null = null;
@@ -60,7 +87,10 @@ export const connectSocket = (accessToken?: string, userId?: string) => {
   }
 
   stompClient = new Client({
-    webSocketFactory: () => new SockJS(`${socketUrl}/ws`),
+    webSocketFactory: () => {
+      ensureNgrokHeadersOnXhr();
+      return new SockJS(`${socketUrl}/ws`);
+    },
     connectHeaders: {
       Authorization: accessToken ? `Bearer ${accessToken}` : "",
     },
