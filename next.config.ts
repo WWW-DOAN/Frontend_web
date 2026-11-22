@@ -1,6 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Trỏ Turbopack về đúng thư mục dự án để tránh cảnh báo workspace root
+  // (do có package-lock.json ở thư mục cha C:\Users\ADMIN).
+  turbopack: {
+    root: process.cwd(),
+  },
+
   allowedDevOrigins: ["192.168.1.59"],
 
   images: {

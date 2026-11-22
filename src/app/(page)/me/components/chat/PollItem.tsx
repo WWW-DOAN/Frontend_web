@@ -32,34 +32,45 @@ import { styled } from "@mui/material/styles";
 import { useState } from "react";
 import { toast } from "react-toastify";
 
-const Root = styled(Box)(({ theme }) => ({
+const Root = styled(Box, {
+  shouldForwardProp: (prop) => prop !== "compact",
+})<{ compact?: boolean }>(({ compact }) => ({
   backgroundColor: "#F8FAFF",
   border: "1px solid #E5E7EB",
-  borderRadius: "12px",
-  padding: "16px",
-  margin: "8px 0",
+  borderRadius: compact ? "8px" : "12px",
+  padding: compact ? "10px" : "16px",
+  margin: compact ? "4px 0" : "8px 0",
+  maxWidth: compact ? "100%" : undefined,
 }));
 
-const Header = styled(Box)({
+const Header = styled(Box, {
+  shouldForwardProp: (prop) => prop !== "compact",
+})<{ compact?: boolean }>(({ compact }) => ({
   display: "flex",
   alignItems: "center",
   justifyContent: "space-between",
-  marginBottom: "12px",
-});
+  marginBottom: compact ? "8px" : "12px",
+}));
 
-const Question = styled(Typography)({
-  fontSize: "16px",
+const Question = styled(Typography, {
+  shouldForwardProp: (prop) => prop !== "compact",
+})<{ compact?: boolean }>(({ compact }) => ({
+  fontSize: compact ? "14px" : "16px",
   fontWeight: 600,
   color: "#111827",
   marginBottom: "4px",
-});
+  wordBreak: "break-word",
+}));
 
-const Meta = styled(Box)({
+const Meta = styled(Box, {
+  shouldForwardProp: (prop) => prop !== "compact",
+})<{ compact?: boolean }>(({ compact }) => ({
   display: "flex",
   alignItems: "center",
+  flexWrap: "wrap",
   gap: "8px",
-  marginBottom: "12px",
-});
+  marginBottom: compact ? "8px" : "12px",
+}));
 
 const StatusChip = styled(Chip)(({ status }: { status: string }) => ({
   fontSize: "11px",
@@ -74,16 +85,20 @@ const StatusChip = styled(Chip)(({ status }: { status: string }) => ({
   }),
 }));
 
-const OptionsContainer = styled(Box)({
+const OptionsContainer = styled(Box, {
+  shouldForwardProp: (prop) => prop !== "compact",
+})<{ compact?: boolean }>(({ compact }) => ({
   display: "flex",
   flexDirection: "column",
-  gap: "8px",
-  marginBottom: "12px",
-});
+  gap: compact ? "6px" : "8px",
+  marginBottom: compact ? "8px" : "12px",
+}));
 
-const OptionItem = styled(Box)<{ theme?: any }>(({ theme }) => ({
+const OptionItem = styled(Box, {
+  shouldForwardProp: (prop) => prop !== "compact",
+})<{ compact?: boolean }>(({ compact }) => ({
   position: "relative",
-  padding: "12px",
+  padding: compact ? "8px 10px" : "12px",
   borderRadius: "8px",
   border: "2px solid #E5E7EB",
   backgroundColor: "#FFFFFF",
@@ -122,11 +137,14 @@ const OptionContent = styled(Box)({
   justifyContent: "space-between",
 });
 
-const OptionLabel = styled(Typography)({
-  fontSize: "14px",
+const OptionLabel = styled(Typography, {
+  shouldForwardProp: (prop) => prop !== "compact",
+})<{ compact?: boolean }>(({ compact }) => ({
+  fontSize: compact ? "13px" : "14px",
   fontWeight: 500,
   color: "#111827",
-});
+  wordBreak: "break-word",
+}));
 
 const VoteCount = styled(Typography)({
   fontSize: "12px",
@@ -160,6 +178,7 @@ const VoteButton = styled(Button)<{ isVoted?: boolean }>(({ isVoted }) => ({
 interface PollItemProps {
   poll: ConversationPoll;
   conversationId: string;
+  compact?: boolean;
   onVote?: () => void;
   onWithdraw?: () => void;
   onClose?: () => void;
@@ -170,6 +189,7 @@ interface PollItemProps {
 export default function PollItem({
   poll,
   conversationId,
+  compact = false,
   onVote,
   onWithdraw,
   onClose,
@@ -282,11 +302,11 @@ export default function PollItem({
   };
 
   return (
-    <Root>
-      <Header>
+    <Root compact={compact}>
+      <Header compact={compact}>
         <Box>
-          <Question>{poll.question}</Question>
-          <Meta>
+          <Question compact={compact}>{poll.question}</Question>
+          <Meta compact={compact}>
             <StatusChip
               label={isExpired ? "Hết hạn" : poll.status === "OPEN" ? "Đang mở" : "Đã đóng"}
               status={isExpired ? "CLOSED" : poll.status}
@@ -354,7 +374,7 @@ export default function PollItem({
         )}
       </Header>
 
-      <OptionsContainer>
+      <OptionsContainer compact={compact}>
         {poll.options.map((option) => {
           const percentage = totalVotes > 0 ? (option.votes / totalVotes) * 100 : 0;
           const isSelected = selectedOptions.includes(option.id);
@@ -363,6 +383,7 @@ export default function PollItem({
           return (
             <OptionItem
               key={option.id}
+              compact={compact}
               data-is-voted={isUserVoted}
               onClick={() => handleOptionClick(option.id)}
             >
@@ -370,7 +391,7 @@ export default function PollItem({
                 <ProgressBar percentage={percentage} />
               )}
               <OptionContent>
-                <OptionLabel>{option.label}</OptionLabel>
+                <OptionLabel compact={compact}>{option.label}</OptionLabel>
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                   {(hasVoted || poll.status === "CLOSED") && (
                     <>
