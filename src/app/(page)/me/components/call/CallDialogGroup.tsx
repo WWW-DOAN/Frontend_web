@@ -432,7 +432,15 @@ export default function CallDialogGroup() {
               </PeerAvatarWrap>
             )}
             <audio
-              ref={(el) => { if (el) peerAudioRefs.current.set(peer.peerId, el); }}
+              ref={(el) => {
+                if (el) {
+                  peerAudioRefs.current.set(peer.peerId, el);
+                  if (peer.audio && el.srcObject !== peer.audio) {
+                    el.srcObject = peer.audio;
+                  }
+                  el.play().catch(() => {});
+                }
+              }}
               autoPlay playsInline
             />
             <PeerNamelabel>
