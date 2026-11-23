@@ -197,13 +197,13 @@ const EmojiWrap = styled(Box)({
 const PickerBox = styled(Box)({
   position: "absolute",
   bottom: 44,
-  right: 0,
-  zIndex: 20,
+  left: 0,
+  zIndex: 30,
   boxShadow: "0 10px 30px rgba(0,0,0,0.12)",
   borderRadius: 12,
   overflow: "hidden",
   "@media (max-width: 767px)": {
-    right: -50,
+    left: -8,
   },
 });
 
